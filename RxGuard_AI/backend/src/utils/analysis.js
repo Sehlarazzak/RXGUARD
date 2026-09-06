@@ -19,7 +19,7 @@ async function loadProducts(force = false) {
   const products = await q(
     "SELECT p.product_id, p.brand_name, p.normalized_name, p.dosage_form, " +
     "p.registration_number, p.registration_date, p.safety_status, " +
-    "p.source_category, p.source_text, " +
+    "p.source_category, p.source_text, p.embedding, p.embedding_model, " +
     "m.manufacturer_id, m.legal_name AS manufacturer_name, m.country AS manufacturer_country, " +
     "COALESCE((SELECT json_agg(json_build_object('ingredient_id', i.ingredient_id, 'name', i.name, " +
     "'strength_value', pi.strength_value, 'strength_unit', pi.strength_unit, " +

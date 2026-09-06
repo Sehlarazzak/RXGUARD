@@ -74,6 +74,32 @@ async function req(method, path, body, token) {
   r = await req('GET', '/medicines/search?q=512900', null, patientToken);
   check('search by batch number', r.status === 200 && r.json.results.length >= 1);
 
+  // smart search: exact name still works
+  r = await req('GET', '/medicines/search/smart?q=Panadol', null, patientToken);
+  check(
+    'smart search exact name',
+    r.status === 200 &&
+      r.json.semantic_available === true &&
+      r.json.results.length >= 1 &&
+      /panadol/i.test(r.json.results[0].brand_name)
+  );
+
+  // smart search: natural-language symptom query returns relevant medicines
+  r = await req('GET', '/medicines/search/smart?q=' + encodeURIComponent('medicine for fever and headache'), null, patientToken);
+  check(
+    'smart search natural language',
+    r.status === 200 &&
+      r.json.results.some((x) => /panadol|brufen/i.test(x.brand_name)) &&
+      !r.json.results.some((x) => /zyrtec|ventolin/i.test(x.brand_name))
+  );
+
+  // smart search: unrelated query returns nothing and a clear message
+  r = await req('GET', '/medicines/search/smart?q=' + encodeURIComponent('rocket fuel'), null, patientToken);
+  check(
+    'smart search unrelated query',
+    r.status === 200 && r.json.results.length === 0 && /no suitable medicine/i.test(r.json.message)
+  );
+
   // patient save prescription
   r = await req('POST', '/prescriptions/patient', { title: 'My Prescription', details: 'Panadol 500mg TDS' }, patientToken);
   check('patient save prescription', r.status === 201);

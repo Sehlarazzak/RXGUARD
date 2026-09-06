@@ -105,7 +105,7 @@ export default function PrescribePage() {
     if (!newPatient.trim()) return;
     setError(null);
     try {
-      const res = await api.post('/prescriptions/files', { patientName: newPatient.trim() });
+      const res = await api.post<{ file: { file_id: string } }>('/prescriptions/files', { patientName: newPatient.trim() });
       setFileId(res.file.file_id);
       setNewPatient('');
       setDpId(null);
@@ -173,7 +173,7 @@ export default function PrescribePage() {
     });
     if (!productCache[productId]) {
       try {
-        const res = await api.get(`/medicines/${productId}`);
+        const res = await api.get<{ product: any }>(`/medicines/${productId}`);
         setProductCache((c) => ({ ...c, [productId]: res.product }));
       } catch (e: any) {
         setError(e.message);
@@ -386,21 +386,23 @@ export default function PrescribePage() {
             {showSuggest && suggestions.length > 0 ? (
               <View style={styles.suggestBox}>
                 <Text style={styles.suggestHint}>Suggestions — tap to insert on the current line</Text>
-                {suggestions.map((s) => (
-                  <Pressable
-                    key={s.product_id}
-                    style={styles.suggestItem}
-                    onPress={() => applySuggestion(s.brand_name)}
-                  >
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={styles.suggestName}>{s.brand_name}</Text>
-                      <Text style={styles.suggestSub}>
-                        {s.dosage_form || '—'} · {s.manufacturer_name || 'Unknown manufacturer'}
-                      </Text>
-                    </View>
-                    <Badge status={s.safety_status} small />
-                  </Pressable>
-                ))}
+                <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
+                  {suggestions.map((s) => (
+                    <Pressable
+                      key={s.product_id}
+                      style={styles.suggestItem}
+                      onPress={() => applySuggestion(s.brand_name)}
+                    >
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={styles.suggestName}>{s.brand_name}</Text>
+                        <Text style={styles.suggestSub}>
+                          {s.dosage_form || '—'} · {s.manufacturer_name || 'Unknown manufacturer'}
+                        </Text>
+                      </View>
+                      <Badge status={s.safety_status} small />
+                    </Pressable>
+                  ))}
+                </ScrollView>
               </View>
             ) : null}
           </View>

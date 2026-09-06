@@ -11,6 +11,7 @@ RxGuard AI is a medication-safety and information platform that helps patients a
 - Administrators can add trusted sources, verify medicine data, approve updates, correct mistakes, and manage users.
 - Every medicine record shows its source, verification date, and data status.
 - AI-assisted explanations of complex medicine notices in simple language, with the official source kept visible.
+- Hybrid AI semantic medicine search: search by natural language intent ("medicine for fever and headache") while keeping exact/keyword search intact.
 - The system flags information that is missing, conflicting, or outdated.
 
 ## Tech Stack
@@ -112,6 +113,8 @@ The API will run on `http://localhost:3001` by default. On first start it will p
 No mediverify schema found. Creating full schema and seed data...
 Database initialisation complete.
 ```
+
+The backend also generates 384-dimensional embeddings for every medicine on first start (and whenever new medicines are added). The model (`Xenova/all-MiniLM-L6-v2`) is downloaded automatically from Hugging Face and cached locally, so no external AI API key is required. This may take a minute on the very first run.
 
 ### 4. Set up the frontend
 

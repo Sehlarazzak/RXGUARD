@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/auth';
@@ -22,6 +22,21 @@ interface SearchResult {
   manufacturer_name: string | null;
 }
 
+interface SmartResult extends SearchResult {
+  keyword_rank: number | null;
+  semantic_rank: number | null;
+  semantic_score: number | null;
+  rrf_score: number;
+  match_source: 'keyword' | 'semantic' | 'hybrid';
+}
+
+interface SmartSearchResponse {
+  results: SmartResult[];
+  query: string;
+  semantic_available: boolean;
+  message: string;
+}
+
 export default function SearchPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -33,6 +48,11 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [smart, setSmart] = useState(false);
+  const [smartMessage, setSmartMessage] = useState<string | null>(null);
+  const { width, height } = useWindowDimensions();
+  const isMobile = width < 860;
+  const resultsMaxHeight = Math.max(280, Math.min(560, (height || 800) - 360));
   const debounceRef = useRef<any>(null);
 
   // Live suggestions dropdown as the user types
@@ -62,6 +82,7 @@ export default function SearchPage() {
   const runSearch = useCallback(async (q?: string) => {
     const query = (q ?? term).trim();
     setShowSuggest(false);
+    setSmartMessage(null);
     if (!query) {
       setError('Please type something to search.');
       return;
@@ -69,14 +90,20 @@ export default function SearchPage() {
     setSearching(true);
     setError(null);
     try {
-      const res = await api.get<{ results: SearchResult[] }>(`/medicines/search?q=${encodeURIComponent(query)}`);
-      setResults(res.results);
+      if (smart) {
+        const res = await api.get<SmartSearchResponse>(`/medicines/search/smart?q=${encodeURIComponent(query)}`);
+        setResults(res.results);
+        setSmartMessage(res.message || null);
+      } else {
+        const res = await api.get<{ results: SearchResult[] }>(`/medicines/search?q=${encodeURIComponent(query)}`);
+        setResults(res.results);
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
       setSearching(false);
     }
-  }, [term]);
+  }, [term, smart]);
 
   // A search arriving from the history page ("Search again") carries ?q= — run
   // it once on mount so the user sees the results immediately.
@@ -134,9 +161,21 @@ export default function SearchPage() {
             {suggestLoading ? <ActivityIndicator color={C.primary} style={{ marginRight: 10 }} /> : null}
           </View>
           <Pressable style={styles.searchBtn} onPress={() => runSearch()}>
-            <Text style={styles.searchBtnText}>Search</Text>
+            <Text style={styles.searchBtnText}>{smart ? 'Smart Search' : 'Search'}</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.smartBtn, smart && styles.smartBtnActive]}
+            onPress={() => setSmart((s) => !s)}
+          >
+            <Text style={[styles.smartBtnText, smart && styles.smartBtnTextActive]}>✨</Text>
           </Pressable>
         </View>
+
+        <Text style={styles.smartHint}>
+          {smart
+            ? 'Smart search understands natural language like "medicine for fever and headache".'
+            : 'Standard search matches medicine names, ingredients, batches and manufacturers.'}
+        </Text>
 
         {showSuggest && suggestions.length > 0 ? (
           <View style={styles.suggestBox}>
@@ -171,11 +210,11 @@ export default function SearchPage() {
       ) : results !== null ? (
         <Card>
           <SectionTitle>{results.length} result{results.length === 1 ? '' : 's'}</SectionTitle>
-          <View style={{ gap: 10, marginTop: 12 }}>
+          <ScrollView style={{ marginTop: 12, maxHeight: resultsMaxHeight }} contentContainerStyle={{ gap: 10 }} showsVerticalScrollIndicator={false}>
             {results.length === 0 ? (
               <EmptyState
                 title="No medicines found."
-                subtitle="Try a different spelling, or search by ingredient (e.g. Paracetamol)."
+                subtitle={smartMessage || 'Try a different spelling, or search by ingredient (e.g. Paracetamol).'}
               />
             ) : (
               results.map((r) => (
@@ -196,7 +235,7 @@ export default function SearchPage() {
                 </Pressable>
               ))
             )}
-          </View>
+          </ScrollView>
         </Card>
       ) : (
         user?.role === 'patient' ? <RetailersSection /> : null
@@ -253,6 +292,19 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15.5, color: C.text },
   searchBtn: { backgroundColor: C.primary, borderRadius: 14, paddingHorizontal: 24, justifyContent: 'center' },
   searchBtnText: { color: C.white, fontWeight: '800', fontSize: 15 },
+  smartBtn: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.white,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: C.primary,
+  },
+  smartBtnActive: { backgroundColor: C.primary },
+  smartBtnText: { fontSize: 18 },
+  smartBtnTextActive: { color: C.white },
+  smartHint: { fontSize: 12, color: C.textSecondary, marginTop: 8, marginLeft: 4 },
   suggestBox: {
     position: 'absolute',
     top: '100%',

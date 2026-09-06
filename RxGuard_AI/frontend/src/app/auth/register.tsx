@@ -134,7 +134,7 @@ export default function RegisterPage() {
           {role === 'doctor' ? (
             <>
               <Input label="Medical License Number" value={licenseNumber} onChangeText={setLicenseNumber} placeholder="PMDC-XXXX-XXXXX" />
-              <View style={{ position: 'relative' }}>
+              <View>
                 <Input
                   label="Clinic / Hospital Name"
                   value={clinicName}
@@ -146,7 +146,7 @@ export default function RegisterPage() {
                   autoCapitalize="words"
                 />
                 {showClinicSuggestions && clinicSuggestions.length > 0 ? (
-                  <View style={styles.suggestBox}>
+                  <ScrollView style={styles.suggestBox} contentContainerStyle={{ paddingVertical: 4 }} showsVerticalScrollIndicator={false}>
                     {clinicSuggestions.map((s) => (
                       <Pressable
                         key={s}
@@ -159,7 +159,7 @@ export default function RegisterPage() {
                         <Text style={styles.suggestText}>{s}</Text>
                       </Pressable>
                     ))}
-                  </View>
+                  </ScrollView>
                 ) : null}
               </View>
             </>
@@ -206,15 +206,12 @@ const styles = StyleSheet.create({
   roleLabel: { fontWeight: '800', fontSize: 15, color: C.text },
   roleHint: { fontSize: 10.5, color: C.textSecondary, lineHeight: 14 },
   suggestBox: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
     backgroundColor: C.white,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: C.border,
-    zIndex: 50,
+    marginTop: 6,
+    maxHeight: 260,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.1,

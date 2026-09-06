@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { Card, C, EmptyState, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
@@ -16,8 +16,9 @@ export default function PastPrescriptionsPage() {
   const router = useRouter();
   const [files, setFiles] = useState<PatientFile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isMobile = width < 860;
+  const gridMaxHeight = Math.max(280, Math.min(560, (height || 800) - 360));
   const { ask, dialog } = useConfirm();
 
   const load = useCallback(async () => {
@@ -57,7 +58,7 @@ export default function PastPrescriptionsPage() {
   return (
     <PageShell>
       {dialog}
-      <View style={{ flex: 1 }}>
+      <View>
         <Text style={styles.title}>Past Prescriptions</Text>
         <Text style={styles.subtitle}>Your saved prescriptions, organised in folders by patient name</Text>
       </View>
@@ -66,7 +67,7 @@ export default function PastPrescriptionsPage() {
 
       <Card>
         <SectionTitle>{files.length} patient file{files.length === 1 ? '' : 's'}</SectionTitle>
-        <View style={[styles.grid, isMobile && { flexDirection: 'column' }]}>
+        <ScrollView style={{ maxHeight: gridMaxHeight }} contentContainerStyle={[styles.grid, isMobile && { flexDirection: 'column' }]} showsVerticalScrollIndicator={false}>
           {files.length === 0 ? (
             <EmptyState
               title="No patient files yet."
@@ -76,7 +77,7 @@ export default function PastPrescriptionsPage() {
             files.map((f) => (
               <View key={f.file_id} style={styles.folderCard}>
                 <Pressable style={{ flex: 1 }} onPress={() => router.push(`/patients/${f.file_id}` as any)}>
-                  <View style={styles.folderIcon}>🗂️</View>
+                  <Text style={styles.folderIcon}>🗂️</Text>
                   <Text style={styles.folderName} numberOfLines={1}>{f.patient_name}</Text>
                   <Text style={styles.folderMeta}>
                     {f.prescription_count} prescription{Number(f.prescription_count) === 1 ? '' : 's'}
@@ -93,7 +94,7 @@ export default function PastPrescriptionsPage() {
               </View>
             ))
           )}
-        </View>
+        </ScrollView>
       </Card>
     </PageShell>
   );

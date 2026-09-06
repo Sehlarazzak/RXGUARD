@@ -77,7 +77,9 @@ CREATE TABLE IF NOT EXISTS mediverify.products (
   holder_id uuid REFERENCES mediverify.market_authorization_holders(holder_id) ON DELETE SET NULL,
   source_category text,
   safety_status text,
-  source_text text
+  source_text text,
+  embedding jsonb,
+  embedding_model text
 );
 
 CREATE INDEX IF NOT EXISTS idx_products_name ON mediverify.products (brand_name);

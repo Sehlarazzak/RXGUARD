@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/context/auth';
@@ -14,6 +14,7 @@ interface Prescription {
   status: string;
   created_at: string;
 }
+
 
 const DATE_PREFIX = '[rxdate:';
 function parseDate(details: string | null): { date: string | null; rest: string } {
@@ -40,8 +41,9 @@ export default function MyPrescriptionsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isMobile = width < 860;
+  const gridMaxHeight = Math.max(280, Math.min(560, (height || 800) - 360));
   const { ask, dialog } = useConfirm();
 
   const load = useCallback(async () => {
@@ -195,7 +197,7 @@ export default function MyPrescriptionsPage() {
 
       <Card>
         <SectionTitle>{items.length} saved prescription{items.length === 1 ? '' : 's'}</SectionTitle>
-        <View style={[styles.grid, isMobile && { flexDirection: 'column' }]}>
+        <ScrollView style={{ maxHeight: gridMaxHeight }} contentContainerStyle={[styles.grid, isMobile && { flexDirection: 'column' }]} showsVerticalScrollIndicator={false}>
           {items.length === 0 ? (
             <EmptyState title="No prescriptions yet." subtitle="Save your first prescription photo to keep it as a personal record." />
           ) : (
@@ -239,7 +241,7 @@ export default function MyPrescriptionsPage() {
               );
             })
           )}
-        </View>
+        </ScrollView>
       </Card>
       
       {/* Full-size image viewer */}

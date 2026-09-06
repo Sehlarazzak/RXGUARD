@@ -5,6 +5,8 @@ const cors = require('cors');
 const path = require('path');
 
 const { initDatabase } = require('./db-init');
+const { q } = require('./db');
+const { ensureProductEmbeddings } = require('./utils/embeddings');
 const authRoutes = require('./routes/auth');
 const medicineRoutes = require('./routes/medicines');
 const prescriptionRoutes = require('./routes/prescriptions');
@@ -15,7 +17,7 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 // Simple request log for diagnostics
 app.use((req, res, next) => {
@@ -63,6 +65,20 @@ app.use((err, req, res, next) => {
 async function startServer() {
   try {
     await initDatabase();
+
+    // Idempotent migration: make sure the products table has embedding columns
+    // even when the database was created before this feature was added.
+    await q('ALTER TABLE mediverify.products ADD COLUMN IF NOT EXISTS embedding jsonb');
+    await q('ALTER TABLE mediverify.products ADD COLUMN IF NOT EXISTS embedding_model text');
+
+    // Generate or refresh embeddings in the background. If the model cannot be
+    // downloaded (e.g. offline), the API still starts; semantic search simply
+    // falls back to keyword search until embeddings are available.
+    await ensureProductEmbeddings().catch((err) => {
+      console.error('Embedding generation warning:', err.message);
+      console.error('Semantic search will run in keyword-only mode until embeddings are available.');
+    });
+
     app.listen(PORT, () => {
       console.log(`RxGuard AI API listening on http://localhost:${PORT}`);
     });

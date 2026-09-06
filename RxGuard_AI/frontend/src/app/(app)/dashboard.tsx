@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { api } from '@/lib/api';
@@ -16,8 +16,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isMobile = width < 860;
+  const recentMaxHeight = Math.max(280, Math.min(560, (height || 800) - 360));
 
   const load = useCallback(async () => {
     setError(null);
@@ -114,7 +115,7 @@ export default function DashboardPage() {
         <SectionTitle>
           {role === 'patient' ? 'Recent Prescriptions' : role === 'doctor' ? 'Recent Patient Files' : 'Recent Searches'}
         </SectionTitle>
-        <View style={{ gap: 10, marginTop: 12 }}>
+        <ScrollView style={{ marginTop: 12, maxHeight: recentMaxHeight }} contentContainerStyle={{ gap: 10 }} showsVerticalScrollIndicator={false}>
           {data.recent.length === 0 ? (
             <EmptyState
               title={
@@ -147,7 +148,7 @@ export default function DashboardPage() {
               </Pressable>
             ))
           )}
-        </View>
+        </ScrollView>
       </Card>
     </PageShell>
   );

@@ -15,8 +15,9 @@ interface FolderPrescription {
 export default function PatientFolderPage() {
   const { fileId } = useLocalSearchParams<{ fileId: string }>();
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isMobile = width < 860;
+  const rxMaxHeight = Math.max(280, Math.min(560, (height || 800) - 360));
   const { ask, dialog } = useConfirm();
 
   const [folder, setFolder] = useState<any>(null);
@@ -70,7 +71,7 @@ export default function PatientFolderPage() {
       {error ? <Card><Text style={{ color: C.red }}>{error}</Text></Card> : null}
 
       <View style={styles.header}>
-        <View style={styles.folderIcon}>🗂️</View>
+        <Text style={styles.folderIcon}>🗂️</Text>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{folder?.patient_name || 'Patient'}</Text>
           <Text style={styles.subtitle}>
@@ -96,7 +97,7 @@ export default function PatientFolderPage() {
             />
           </View>
         ) : (
-          <View style={{ gap: 10, marginTop: 12 }}>
+          <ScrollView style={{ marginTop: 12, maxHeight: rxMaxHeight }} contentContainerStyle={{ gap: 10 }} showsVerticalScrollIndicator={false}>
             {prescriptions.map((p) => {
               const open = expanded === p.dp_id;
               return (
@@ -139,7 +140,7 @@ export default function PatientFolderPage() {
                 </View>
               );
             })}
-          </View>
+          </ScrollView>
         )}
       </Card>
     </PageShell>

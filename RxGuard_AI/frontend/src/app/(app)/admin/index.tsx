@@ -40,8 +40,9 @@ interface FilterOptions {
 const PAGE_SIZE = 25;
 
 export default function AdminMedicinesPage() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isWide = width >= 1100;
+  const resultsMaxHeight = Math.max(320, (height || 800) - 260);
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -284,7 +285,7 @@ export default function AdminMedicinesPage() {
 
         {/* CENTER: results */}
         <View style={styles.results}>
-          <Card style={{ gap: 10 }}>
+          <Card style={{ flex: 1, gap: 10 }}>
             <View style={styles.resultsHeader}>
               <Text style={styles.resultsTitle}>
                 {rows === null ? 'Loading...' : `${total} medicine${total === 1 ? '' : 's'}`}
@@ -304,15 +305,15 @@ export default function AdminMedicinesPage() {
               ) : null}
             </View>
 
-            {rows === null ? (
-              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                <ActivityIndicator color={C.primary} />
-              </View>
-            ) : rows.length === 0 ? (
-              <EmptyState title="No medicines match your search or filters." subtitle="Try a different term or clear the filters." />
-            ) : (
-              <View style={{ gap: 8 }}>
-                {rows.map((r) => (
+            <ScrollView style={{ flex: 1, maxHeight: resultsMaxHeight }} contentContainerStyle={{ gap: 8, flexGrow: 1 }}>
+              {rows === null ? (
+                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                  <ActivityIndicator color={C.primary} />
+                </View>
+              ) : rows.length === 0 ? (
+                <EmptyState title="No medicines match your search or filters." subtitle="Try a different term or clear the filters." />
+              ) : (
+                rows.map((r) => (
                   <Pressable
                     key={r.product_id}
                     onPress={() => {
@@ -352,9 +353,9 @@ export default function AdminMedicinesPage() {
                       </View>
                     </View>
                   </Pressable>
-                ))}
-              </View>
-            )}
+                ))
+              )}
+            </ScrollView>
           </Card>
         </View>
 
