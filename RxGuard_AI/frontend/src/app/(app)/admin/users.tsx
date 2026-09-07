@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { api } from '@/lib/api';
-import { Badge, Card, C, EmptyState, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
+import { Alert, Badge, Button, Card, C, EmptyState, PageHeader, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
 
 interface AdminUser {
   user_id: string;
@@ -24,6 +24,7 @@ export default function AdminUsersPage() {
   const [debounced, setDebounced] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
   const { width } = useWindowDimensions();
   const isMobile = width < 860;
   const { ask, dialog } = useConfirm();
@@ -60,11 +61,14 @@ export default function AdminUsersPage() {
       danger: u.is_active,
     });
     if (!ok) return;
+    setBusyId(u.user_id);
     try {
       await api.post(`/admin/users/${u.user_id}/toggle`, {});
       load();
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -78,14 +82,15 @@ export default function AdminUsersPage() {
   return (
     <PageShell>
       {dialog}
-      <View>
-        <Text style={styles.title}>Users</Text>
-        <Text style={styles.subtitle}>All registered accounts — search, filter by role and manage activation.</Text>
-      </View>
+      <PageHeader
+        eyebrow="Administration"
+        title="User access"
+        subtitle="Search registered accounts, filter by role, and manage activation status."
+      />
 
-      {error ? <Card><Text style={{ color: C.red }}>{error}</Text></Card> : null}
+      {error ? <Alert tone="error" title="Could not update users" message={error} action={<Button title="Retry" size="sm" variant="secondary" onPress={load} />} /> : null}
 
-      <Card style={{ gap: 12 }}>
+      <Card style={{ gap: 12 }} elevated>
         <View style={styles.searchBar}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
@@ -100,6 +105,8 @@ export default function AdminUsersPage() {
           {roleTabs.map((t) => (
             <Pressable
               key={t.value}
+              accessibilityRole="button"
+              accessibilityState={{ selected: roleFilter === t.value }}
               style={[styles.roleTab, roleFilter === t.value && styles.roleTabActive]}
               onPress={() => setRoleFilter(t.value)}
             >
@@ -110,6 +117,8 @@ export default function AdminUsersPage() {
           ))}
           <View style={{ flex: 1 }} />
           <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: approvalFilter === 'pending' }}
             style={[styles.roleTab, approvalFilter === 'pending' && styles.roleTabActive]}
             onPress={() => setApprovalFilter(approvalFilter === 'pending' ? '' : 'pending')}
           >
@@ -120,8 +129,8 @@ export default function AdminUsersPage() {
         </View>
       </Card>
 
-      <Card>
-        <SectionTitle>{users === null ? 'Loading...' : `${users.length} user${users.length === 1 ? '' : 's'}`}</SectionTitle>
+      <Card elevated>
+        <SectionTitle subtitle="Activation changes take effect immediately.">{users === null ? 'Loading accounts…' : `${users.length} user${users.length === 1 ? '' : 's'}`}</SectionTitle>
         {users === null ? (
           <View style={{ paddingVertical: 30, alignItems: 'center' }}><Spinner /></View>
         ) : users.length === 0 ? (
@@ -152,14 +161,14 @@ export default function AdminUsersPage() {
                     </Text>
                     <Text style={styles.date}>Joined {new Date(u.created_at).toLocaleDateString()}</Text>
                   </View>
-                  <Pressable
-                    style={[styles.toggleBtn, !u.is_active && styles.toggleBtnActivate]}
+                  <Button
+                    title={u.is_active ? 'Deactivate' : 'Activate'}
+                    variant={u.is_active ? 'danger' : 'success'}
+                    size="sm"
+                    loading={busyId === u.user_id}
+                    disabled={busyId !== null && busyId !== u.user_id}
                     onPress={() => toggleActive(u)}
-                  >
-                    <Text style={[styles.toggleBtnText, !u.is_active && { color: C.green }]}>
-                      {u.is_active ? 'Deactivate' : 'Activate'}
-                    </Text>
-                  </Pressable>
+                  />
                 </View>
               </View>
             ))}
@@ -171,8 +180,6 @@ export default function AdminUsersPage() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 2 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,14 +217,4 @@ const styles = StyleSheet.create({
   date: { fontSize: 11.5, color: C.textSecondary },
   inactiveChip: { backgroundColor: C.gray100, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   inactiveChipText: { fontSize: 10, color: C.textSecondary, fontWeight: '700' },
-  toggleBtn: {
-    borderWidth: 1.5,
-    borderColor: C.red,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: C.white,
-  },
-  toggleBtnActivate: { borderColor: C.green },
-  toggleBtnText: { color: C.red, fontWeight: '700', fontSize: 12.5 },
 });

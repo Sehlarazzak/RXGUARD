@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { api } from '@/lib/api';
-import { Badge, Card, C, EmptyState, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
+import { Alert, Badge, Button, Card, C, EmptyState, PageHeader, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
 
 type Tab = 'manufacturers' | 'sources' | 'backups' | 'events';
 
@@ -12,14 +12,13 @@ export default function AdminManagementPage() {
 
   return (
     <PageShell>
-      <View>
-        <Text style={styles.title}>Management Modules</Text>
-        <Text style={styles.subtitle}>
-          Manufacturers, DRAP sources, manual backups and the immutable admin event audit trail.
-        </Text>
-      </View>
+      <PageHeader
+        eyebrow="Administration"
+        title="Registry operations"
+        subtitle="Maintain manufacturer details, review source records, create manual backups, and inspect the immutable event trail."
+      />
 
-      <View style={[styles.tabs, isMobile && { flexWrap: 'wrap' }]}>
+      <View style={[styles.tabs, isMobile && { flexWrap: 'wrap' }]}> 
         {(
           [
             ['manufacturers', 'Manufacturers'],
@@ -30,6 +29,8 @@ export default function AdminManagementPage() {
         ).map(([value, label]) => (
           <Pressable
             key={value}
+            accessibilityRole="button"
+            accessibilityState={{ selected: tab === value }}
             style={[styles.tab, tab === value && styles.tabActive]}
             onPress={() => setTab(value)}
           >
@@ -98,9 +99,9 @@ function ManufacturersTab() {
   };
 
   return (
-    <Card>
-      {error ? <Text style={{ color: C.red, marginBottom: 8 }}>{error}</Text> : null}
-      <SectionTitle>{rows === null ? 'Loading...' : `${rows.length} manufacturers`}</SectionTitle>
+    <Card elevated>
+      {error ? <Alert tone="error" title="Could not load manufacturers" message={error} /> : null}
+      <SectionTitle subtitle="Edit the registry manufacturer profile without changing linked records.">{rows === null ? 'Loading manufacturers…' : `${rows.length} manufacturers`}</SectionTitle>
       {rows === null ? (
         <View style={{ paddingVertical: 30, alignItems: 'center' }}><Spinner /></View>
       ) : (
@@ -114,9 +115,7 @@ function ManufacturersTab() {
                 </Text>
                 {m.address ? <Text style={styles.rowSub} numberOfLines={1}>{m.address}</Text> : null}
               </View>
-              <Pressable style={styles.smallBtn} onPress={() => openEdit(m)}>
-                <Text style={styles.smallBtnText}>Edit</Text>
-              </Pressable>
+              <Button title="Edit" size="sm" variant="secondary" onPress={() => openEdit(m)} />
             </View>
           ))}
         </View>
@@ -128,13 +127,9 @@ function ManufacturersTab() {
           <TextInput value={legalName} onChangeText={setLegalName} placeholder="Legal name" placeholderTextColor="#9CA3AF" style={styles.editInput} />
           <TextInput value={country} onChangeText={setCountry} placeholder="Country" placeholderTextColor="#9CA3AF" style={styles.editInput} />
           <TextInput value={address} onChangeText={setAddress} placeholder="Address" placeholderTextColor="#9CA3AF" multiline style={[styles.editInput, { height: 70, textAlignVertical: 'top' }]} />
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Pressable style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
-              <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save'}</Text>
-            </Pressable>
-            <Pressable style={styles.cancelBtn} onPress={() => setEditing(null)}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </Pressable>
+          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+            <Button title="Save changes" size="sm" loading={saving} onPress={save} />
+            <Button title="Cancel" size="sm" variant="secondary" onPress={() => setEditing(null)} />
           </View>
         </View>
       ) : null}
@@ -168,8 +163,8 @@ function SourcesTab() {
 
   return (
     <View style={{ gap: 14 }}>
-      {error ? <Card><Text style={{ color: C.red }}>{error}</Text></Card> : null}
-      <Card>
+      {error ? <Alert tone="error" title="Could not load source records" message={error} /> : null}
+      <Card elevated>
         <SectionTitle>Registered sources</SectionTitle>
         {sources === null ? (
           <View style={{ paddingVertical: 30, alignItems: 'center' }}><Spinner /></View>
@@ -191,8 +186,8 @@ function SourcesTab() {
         )}
       </Card>
 
-      <Card>
-        <SectionTitle>Source documents</SectionTitle>
+      <Card elevated>
+        <SectionTitle subtitle="Open a source title to view its canonical reference.">Source documents</SectionTitle>
         {documents === null ? (
           <View style={{ paddingVertical: 30, alignItems: 'center' }}><Spinner /></View>
         ) : documents.length === 0 ? (
@@ -273,15 +268,13 @@ function BackupsTab() {
   };
 
   return (
-    <Card>
+    <Card elevated>
       {dialog}
-      {error ? <Text style={{ color: C.red, marginBottom: 8 }}>{error}</Text> : null}
-      {message ? <Text style={{ color: C.green, marginBottom: 8, fontWeight: '600' }}>{message}</Text> : null}
+      {error ? <Alert tone="error" title="Backup creation failed" message={error} /> : null}
+      {message ? <Alert tone="success" title="Backup created" message={message} /> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <SectionTitle>{backups === null ? 'Backups' : `${backups.length} backup${backups.length === 1 ? '' : 's'}`}</SectionTitle>
-        <Pressable style={[styles.backupBtn, creating && { opacity: 0.6 }]} onPress={createBackup} disabled={creating}>
-          <Text style={styles.backupBtnText}>{creating ? 'Creating backup...' : '＋ Create manual backup'}</Text>
-        </Pressable>
+        <Button title="Create manual backup" onPress={createBackup} loading={creating} />
       </View>
       <Text style={styles.rowMeta}>Each backup dumps the full registry + app data to a JSON file on the server and is logged in the audit trail.</Text>
       {backups === null ? (
@@ -333,9 +326,9 @@ function EventsTab() {
   }, []);
 
   return (
-    <Card>
-      {error ? <Text style={{ color: C.red, marginBottom: 8 }}>{error}</Text> : null}
-      <SectionTitle>Admin event audit trail</SectionTitle>
+    <Card elevated>
+      {error ? <Alert tone="error" title="Could not load admin events" message={error} /> : null}
+      <SectionTitle subtitle="Read-only audit entries for administrative actions.">Admin event audit trail</SectionTitle>
       <Text style={styles.rowMeta}>Immutable log of every administrative action (read-only).</Text>
       {events === null ? (
         <View style={{ paddingVertical: 30, alignItems: 'center' }}><Spinner /></View>
@@ -376,8 +369,6 @@ function eventColor(action: string): string {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 2 },
   tabs: { flexDirection: 'row', gap: 8 },
   tab: {
     paddingHorizontal: 16,
@@ -402,15 +393,6 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 14, fontWeight: '700', color: C.text },
   rowMeta: { fontSize: 12, color: C.textSecondary },
   rowSub: { fontSize: 11.5, color: C.textSecondary },
-  smallBtn: {
-    borderWidth: 1.5,
-    borderColor: C.primary,
-    borderRadius: 9,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    backgroundColor: C.white,
-  },
-  smallBtnText: { color: C.primary, fontWeight: '700', fontSize: 12 },
   editBox: {
     marginTop: 14,
     borderWidth: 1.5,
@@ -431,10 +413,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.white,
     color: C.text,
   },
-  saveBtn: { flex: 1, backgroundColor: C.primary, borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
-  saveBtnText: { color: C.white, fontWeight: '700', fontSize: 13.5 },
-  cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: C.border, borderRadius: 10, paddingVertical: 11, alignItems: 'center', backgroundColor: C.white },
-  cancelBtnText: { color: C.textSecondary, fontWeight: '700', fontSize: 13.5 },
   docHeaderRow: {
     flexDirection: 'row',
     gap: 10,
@@ -445,13 +423,6 @@ const styles = StyleSheet.create({
   },
   docHeaderCell: { fontSize: 11.5, fontWeight: '800', color: C.primaryDark, textTransform: 'uppercase' },
   docCell: { fontSize: 12.5, color: C.text, flexShrink: 1 },
-  backupBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  backupBtnText: { color: C.white, fontWeight: '700', fontSize: 13 },
   eventRow: { flexDirection: 'row' },
   eventRail: { width: 16, alignItems: 'center', paddingTop: 6 },
   eventDot: { width: 9, height: 9, borderRadius: 5 },

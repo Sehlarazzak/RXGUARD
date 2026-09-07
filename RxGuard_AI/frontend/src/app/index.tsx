@@ -27,82 +27,85 @@ export default function LandingPage() {
   }
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.nav}>
         <View style={styles.brandRow}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>Rx</Text>
+          <View style={styles.logo}><Text style={styles.logoText}>R</Text></View>
+          <View>
+            <Text style={styles.brandName}>RxGuard</Text>
+            <Text style={styles.brandTag}>SAFETY INTELLIGENCE</Text>
           </View>
-          <Text style={styles.brandName}>RxGuard AI</Text>
         </View>
         <View style={styles.navBtns}>
-          <Pressable style={styles.loginBtn} onPress={() => router.push('/auth/login' as any)}>
-            <Text style={styles.loginText}>Login</Text>
+          <Pressable accessibilityRole="link" accessibilityLabel="Log in to RxGuard" style={({ pressed }) => [styles.loginBtn, pressed && styles.pressed]} onPress={() => router.push('/auth/login' as any)}>
+            <Text style={styles.loginText}>Log in</Text>
           </Pressable>
+          {!isMobile ? <Pressable accessibilityRole="link" style={({ pressed }) => [styles.navCreate, pressed && styles.pressed]} onPress={() => router.push('/auth/register' as any)}><Text style={styles.navCreateText}>Get started</Text></Pressable> : null}
         </View>
       </View>
 
-      <View style={[styles.hero, isMobile && { flexDirection: 'column' }]}>
+      <View style={[styles.hero, isMobile && styles.heroMobile]}>
         <View style={styles.heroText}>
-          <Text style={styles.headline}>Helping your diagnosis</Text>
+          <View style={styles.eyebrow}><View style={styles.eyebrowDot} /><Text style={styles.eyebrowText}>Medication safety workspace</Text></View>
+          <Text accessibilityRole="header" style={styles.headline}>Medication safety,{`\n`}made clearer.</Text>
           <Text style={styles.description}>
-            RxGuard AI is an AI-powered medication safety platform for patients, doctors and pharmacists.
-            Track discontinued, recalled and reformulated medicines, verify prescriptions against live DRAP
-            safety data, and discover safe alternatives — all in one place.
+            Search documented medicine records, review registry safety information, and manage prescription records in one focused workspace.
           </Text>
-          <View style={[styles.ctaRow, isMobile && { flexDirection: 'column' }]}>
-            <Pressable style={styles.createBtn} onPress={() => router.push('/auth/register' as any)}>
-              <Text style={styles.createText}>Create Account</Text>
+          <View style={[styles.ctaRow, isMobile && styles.ctaRowMobile]}>
+            <Pressable accessibilityRole="link" style={({ pressed }) => [styles.createBtn, pressed && styles.pressed]} onPress={() => router.push('/auth/register' as any)}>
+              <Text style={styles.createText}>Create an account</Text><Text style={styles.createArrow}>→</Text>
             </Pressable>
-            <Pressable style={styles.loginGhost} onPress={() => router.push('/auth/login' as any)}>
-              <Text style={styles.loginGhostText}>Login</Text>
+            <Pressable accessibilityRole="link" style={({ pressed }) => [styles.loginGhost, pressed && styles.pressed]} onPress={() => router.push('/auth/login' as any)}>
+              <Text style={styles.loginGhostText}>Explore your workspace</Text>
             </Pressable>
           </View>
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>52+</Text>
-              <Text style={styles.statLabel}>Medicines tracked</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>7</Text>
-              <Text style={styles.statLabel}>DRAP safety alerts</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>31</Text>
-              <Text style={styles.statLabel}>Recalled batches</Text>
-            </View>
+          <View style={[styles.trustRow, isMobile && styles.trustRowMobile]}>
+            <TrustMark label="Registry-aware search" />
+            <TrustMark label="Role-specific workspaces" />
+            <TrustMark label="Safety status visibility" />
           </View>
         </View>
-        <Image
-          source={require('@/assets/images/rxguard-hero.png')}
-          style={isMobile ? styles.heroImageMobile : styles.heroImage}
-          contentFit="contain"
-        />
+        <View style={[styles.heroVisual, isMobile && styles.heroVisualMobile]}>
+          <View style={styles.visualAccent} />
+          <Image
+            source={require('@/assets/images/rxguard-hero.png')}
+            style={styles.heroImage}
+            contentFit="contain"
+            accessibilityLabel="RxGuard medication safety interface preview"
+          />
+          <View style={styles.visualCallout}>
+            <View style={styles.calloutIcon}><Text style={styles.calloutIconText}>✓</Text></View>
+            <View><Text style={styles.calloutTitle}>Safety information, in context</Text><Text style={styles.calloutSub}>Search, review, and decide with clarity.</Text></View>
+          </View>
+        </View>
       </View>
 
-      <View style={[styles.features, isMobile && { flexDirection: 'column' }]}>
-        <FeatureCard
-          title="For Patients"
-          body="Check if your medicines are safe, view ingredients and manufacturers, find nearby retailers and keep your prescriptions organised."
-        />
-        <FeatureCard
-          title="For Doctors"
-          body="Type prescriptions on the notepad, get instant safety verification, swap unsafe medicines for AI-ranked alternatives, then print with confidence."
-        />
-        <FeatureCard
-          title="For Pharmacists & Admins"
-          body="Centralised DRAP registry with relationship maps, batch tracking, source documents and a complete audit trail."
-        />
+      <View style={styles.sectionIntro}>
+        <Text style={styles.sectionKicker}>ONE PLATFORM, THREE WORKSPACES</Text>
+        <Text style={styles.sectionTitle}>Built around the people who use it.</Text>
+      </View>
+      <View style={[styles.features, isMobile && styles.featuresMobile]}>
+        <FeatureCard icon="⌕" title="Patients" body="Find medicine records, understand displayed safety status, and keep uploaded prescription records organized." />
+        <FeatureCard icon="✎" title="Doctors" body="Create patient files, check typed prescriptions against available medicine safety data, and print only after review." />
+        <FeatureCard icon="▦" title="Administrators" body="Maintain the registry, review approvals, and manage users with clear operational context." />
       </View>
 
-      <Text style={styles.footer}>RxGuard AI — AI-Powered Medication Safety Platform</Text>
+      <View style={[styles.footer, isMobile && styles.footerMobile]}>
+        <Text style={styles.footerBrand}>RxGuard</Text>
+        <Text style={styles.footerText}>Medication safety information, presented with clarity.</Text>
+      </View>
     </ScrollView>
   );
 }
 
-function FeatureCard({ title, body }: { title: string; body: string }) {
+function TrustMark({ label }: { label: string }) {
+  return <View style={styles.trustMark}><View style={styles.trustDot} /><Text style={styles.trustText}>{label}</Text></View>;
+}
+
+function FeatureCard({ icon, title, body }: { icon: string; title: string; body: string }) {
   return (
     <View style={styles.featureCard}>
+      <View style={styles.featureIcon}><Text style={styles.featureIconText}>{icon}</Text></View>
       <Text style={styles.featureTitle}>{title}</Text>
       <Text style={styles.featureBody}>{body}</Text>
     </View>
@@ -111,77 +114,61 @@ function FeatureCard({ title, body }: { title: string; body: string }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.white },
-  content: { maxWidth: 1100, width: '100%', alignSelf: 'center', paddingHorizontal: 24 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
-  nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 20,
-  },
+  content: { maxWidth: 1200, width: '100%', alignSelf: 'center', paddingHorizontal: 24, paddingBottom: 30 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.aliceBlue },
+  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 21 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: C.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: { color: C.white, fontWeight: '800', fontSize: 16 },
-  brandName: { fontWeight: '800', fontSize: 20, color: C.text },
-  navBtns: { flexDirection: 'row', gap: 10 },
-  loginBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 },
-  loginText: { color: C.primary, fontWeight: '700', fontSize: 15 },
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 30,
-    paddingVertical: 30,
-    borderRadius: 24,
-    marginVertical: 10,
-  },
-  heroText: { flex: 1, gap: 16 },
-  headline: { fontSize: 42, fontStyle: 'italic', fontWeight: '800', color: C.primary, lineHeight: 50 },
-  description: { fontSize: 16, color: C.textSecondary, lineHeight: 25 },
-  ctaRow: { flexDirection: 'row', gap: 14, marginTop: 6 },
-  createBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 14,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    shadowColor: C.primary,
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  createText: { color: C.white, fontWeight: '800', fontSize: 16 },
-  loginGhost: {
-    borderRadius: 14,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderWidth: 2,
-    borderColor: C.primary,
-  },
-  loginGhostText: { color: C.primary, fontWeight: '800', fontSize: 16 },
-  statsRow: { flexDirection: 'row', gap: 30, marginTop: 16 },
-  stat: { gap: 2 },
-  statNum: { fontSize: 24, fontWeight: '800', color: C.primary },
-  statLabel: { fontSize: 12, color: C.textSecondary },
-  heroImage: { width: 420, height: 340 },
-  heroImageMobile: { width: '100%', height: 220, marginTop: 6 },
-  features: { flexDirection: 'row', gap: 16, paddingVertical: 20 },
-  featureCard: {
-    flex: 1,
-    backgroundColor: C.aliceBlue,
-    borderRadius: 18,
-    padding: 20,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-  },
-  featureTitle: { fontSize: 17, fontWeight: '800', color: C.text },
-  featureBody: { fontSize: 13.5, color: C.textSecondary, lineHeight: 20 },
-  footer: { textAlign: 'center', color: '#9CA3AF', fontSize: 13, paddingVertical: 24 },
+  logo: { width: 39, height: 39, borderRadius: 13, backgroundColor: C.navy, alignItems: 'center', justifyContent: 'center' },
+  logoText: { color: C.white, fontWeight: '900', fontSize: 17 },
+  brandName: { fontWeight: '900', fontSize: 19, color: C.navy, letterSpacing: -0.25 },
+  brandTag: { fontSize: 7.5, fontWeight: '800', letterSpacing: 1.05, color: C.primary, marginTop: 1 },
+  navBtns: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  loginBtn: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 10 },
+  loginText: { color: C.primaryDark, fontWeight: '800', fontSize: 13.5 },
+  navCreate: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 10, backgroundColor: C.primary },
+  navCreateText: { color: C.white, fontWeight: '800', fontSize: 13 },
+  hero: { flexDirection: 'row', gap: 32, alignItems: 'center', padding: 44, backgroundColor: C.navy, borderRadius: 26, overflow: 'hidden' },
+  heroMobile: { padding: 25, gap: 26 },
+  heroText: { flex: 1, gap: 17, minWidth: 250 },
+  eyebrow: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(103, 185, 232, 0.16)', borderWidth: 1, borderColor: 'rgba(103, 185, 232, 0.28)' },
+  eyebrowDot: { height: 6, width: 6, borderRadius: 3, backgroundColor: C.lightBlue },
+  eyebrowText: { color: '#C7E8FC', fontSize: 10.5, fontWeight: '800', letterSpacing: 0.35 },
+  headline: { fontSize: 45, fontWeight: '900', color: C.white, lineHeight: 51, letterSpacing: -1.3 },
+  description: { maxWidth: 575, fontSize: 15.5, color: '#C7D8E8', lineHeight: 24 },
+  ctaRow: { flexDirection: 'row', gap: 11, marginTop: 4, flexWrap: 'wrap' },
+  ctaRowMobile: { flexDirection: 'column', alignItems: 'stretch' },
+  createBtn: { minHeight: 51, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 13, backgroundColor: C.lightBlue, borderRadius: 13, paddingVertical: 13, paddingHorizontal: 20 },
+  createText: { color: C.navy, fontWeight: '900', fontSize: 14.5 },
+  createArrow: { color: C.navy, fontWeight: '900', fontSize: 18 },
+  loginGhost: { minHeight: 51, justifyContent: 'center', alignItems: 'center', borderRadius: 13, paddingVertical: 13, paddingHorizontal: 18, borderWidth: 1, borderColor: 'rgba(231, 247, 241, 0.36)' },
+  loginGhostText: { color: C.white, fontWeight: '800', fontSize: 14 },
+  trustRow: { flexDirection: 'row', gap: 15, marginTop: 5, flexWrap: 'wrap' },
+  trustRowMobile: { flexDirection: 'column', gap: 8 },
+  trustMark: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  trustDot: { height: 5, width: 5, borderRadius: 3, backgroundColor: C.lightBlue },
+  trustText: { color: '#B7CBDE', fontSize: 10.5, fontWeight: '700' },
+  heroVisual: { width: 365, height: 330, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  heroVisualMobile: { width: '100%', maxWidth: 365, alignSelf: 'center' },
+  visualAccent: { position: 'absolute', width: 278, height: 278, borderRadius: 150, backgroundColor: 'rgba(103, 185, 232, 0.14)', borderWidth: 1, borderColor: 'rgba(103, 185, 232, 0.2)' },
+  heroImage: { width: '100%', height: 280 },
+  visualCallout: { position: 'absolute', left: 0, bottom: 12, right: 0, flexDirection: 'row', gap: 9, alignItems: 'center', padding: 12, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.95)', shadowColor: C.navy, shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
+  calloutIcon: { height: 30, width: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: C.greenBg },
+  calloutIconText: { color: C.green, fontSize: 15, fontWeight: '900' },
+  calloutTitle: { color: C.navy, fontSize: 11.5, fontWeight: '900' },
+  calloutSub: { color: C.textSecondary, fontSize: 10.5, marginTop: 2 },
+  sectionIntro: { paddingTop: 54, gap: 5 },
+  sectionKicker: { color: C.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1.15 },
+  sectionTitle: { color: C.navy, fontSize: 27, fontWeight: '900', letterSpacing: -0.6 },
+  features: { flexDirection: 'row', gap: 14, paddingTop: 20 },
+  featuresMobile: { flexDirection: 'column' },
+  featureCard: { flex: 1, minHeight: 202, padding: 20, gap: 9, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border, borderRadius: 19 },
+  featureIcon: { width: 35, height: 35, borderRadius: 11, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 3 },
+  featureIconText: { color: C.primaryDark, fontSize: 17, fontWeight: '900' },
+  featureTitle: { fontSize: 17, fontWeight: '900', color: C.navy },
+  featureBody: { fontSize: 13, color: C.textSecondary, lineHeight: 20 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 44, borderTopWidth: 1, borderTopColor: C.border, paddingVertical: 22 },
+  footerMobile: { flexDirection: 'column', alignItems: 'flex-start', gap: 4 },
+  footerBrand: { color: C.navy, fontWeight: '900', fontSize: 14 },
+  footerText: { color: C.textMuted, fontSize: 11.5 },
+  pressed: { opacity: 0.84, transform: [{ scale: 0.985 }] },
 });

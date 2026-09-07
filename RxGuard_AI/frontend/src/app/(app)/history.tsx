@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/lib/api';
-import { Button, Card, C, EmptyState, PageShell, SectionTitle, Spinner } from '@/components/ui';
+import { Alert, Button, Card, C, EmptyState, LoadingPanel, PageHeader, PageShell, SectionTitle } from '@/components/ui';
 
 interface HistoryItem {
   search_id: string;
@@ -43,36 +43,26 @@ export default function HistoryPage() {
   };
 
   if (error) {
-    return <PageShell><Card><Text style={{ color: C.red }}>{error}</Text></Card></PageShell>;
+    return <PageShell><PageHeader eyebrow="Your activity" title="Search history" subtitle="Review and reopen past medicine searches." /><Alert tone="error" title="History unavailable" message={error} action={<Button title="Try again" size="sm" variant="secondary" onPress={load} />} /></PageShell>;
   }
   if (!history) {
-    return <View style={{ flex: 1, justifyContent: 'center' }}><Spinner label="Loading your search history..." /></View>;
+    return <PageShell><LoadingPanel label="Loading your search history…" /></PageShell>;
   }
 
   return (
     <PageShell>
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Search History</Text>
-          <Text style={styles.subtitle}>Everything you have searched in RxGuard AI</Text>
-        </View>
-        {history.length > 0 ? (
-          <Button title="Clear History" variant="secondary" onPress={clearAll} />
-        ) : null}
-      </View>
+      <PageHeader eyebrow="Your activity" title="Search history" subtitle="Review past registry searches and run one again with a single tap." actions={history.length > 0 ? <Button title="Clear history" variant="secondary" onPress={clearAll} /> : undefined} />
 
-      <Card>
-        <SectionTitle>{history.length} search{history.length === 1 ? '' : 'es'}</SectionTitle>
+      <Card style={styles.historyCard}>
+        <SectionTitle subtitle="Recent searches are stored under your account.">{history.length} search{history.length === 1 ? '' : 'es'}</SectionTitle>
         <View style={{ gap: 8, marginTop: 12 }}>
           {history.length === 0 ? (
             <EmptyState title="No searches yet." subtitle="Your searches will appear here after you use the search bar." />
           ) : (
             history.map((h) => (
-              <Pressable key={h.search_id} style={styles.historyItem} onPress={() => searchAgain(h.query)}>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={styles.queryText} numberOfLines={1}>{h.query}</Text>
-                  <Text style={styles.dateText}>{new Date(h.created_at).toLocaleString()}</Text>
-                </View>
+              <Pressable key={h.search_id} accessibilityRole="button" accessibilityLabel={`Search again for ${h.query}`} style={({ pressed }) => [styles.historyItem, pressed && styles.pressed]} onPress={() => searchAgain(h.query)}>
+                <View style={styles.historyIcon}><Text style={styles.historyIconText}>⌕</Text></View>
+                <View style={{ flex: 1, gap: 2 }}><Text style={styles.queryText} numberOfLines={1}>{h.query}</Text><Text style={styles.dateText}>{new Date(h.created_at).toLocaleString()}</Text></View>
                 <Text style={styles.searchAgainText}>Search again →</Text>
               </Pressable>
             ))
@@ -84,20 +74,12 @@ export default function HistoryPage() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 2 },
-  historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: C.gray50,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  queryText: { fontSize: 15, fontWeight: '700', color: C.text },
-  dateText: { fontSize: 12, color: C.textSecondary },
-  searchAgainText: { color: C.primary, fontWeight: '700', fontSize: 13 },
+  historyCard: { paddingBottom: 16 },
+  historyItem: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 13, borderRadius: 13, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border },
+  historyIcon: { width: 33, height: 33, borderRadius: 10, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  historyIconText: { color: C.primaryDark, fontSize: 16, fontWeight: '900' },
+  queryText: { fontSize: 14, fontWeight: '900', color: C.text },
+  dateText: { fontSize: 11.5, color: C.textSecondary },
+  searchAgainText: { color: C.primaryDark, fontWeight: '800', fontSize: 11.5 },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });

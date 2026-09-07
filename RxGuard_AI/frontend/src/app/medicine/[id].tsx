@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/auth';
-import { Badge, Card, C, EmptyState, Spinner } from '@/components/ui';
+import { Alert, Badge, Button, Card, C, EmptyState, SectionTitle, Spinner } from '@/components/ui';
 
 export default function MedicineDetailPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,11 +25,9 @@ export default function MedicineDetailPage() {
     return (
       <View style={styles.page}>
         <ScrollView contentContainerStyle={styles.content}>
-          <Card>
-            <EmptyState title="Medicine not found" subtitle={error} />
-            <Pressable style={styles.backBtn} onPress={() => router.back()}>
-              <Text style={styles.backText}>← Back</Text>
-            </Pressable>
+          <Card elevated>
+            <EmptyState title="Medicine record unavailable" subtitle={error} />
+            <View style={styles.errorActions}><Button title="Go back" variant="secondary" onPress={() => router.back()} /></View>
           </Card>
         </ScrollView>
       </View>
@@ -43,36 +41,34 @@ export default function MedicineDetailPage() {
 
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <Pressable style={styles.backBtn} onPress={() => router.back()}>
-        <Text style={styles.backText}>← Back</Text>
+      <Pressable accessibilityRole="link" style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} onPress={() => router.back()}>
+        <Text style={styles.backText}>← Back to results</Text>
       </Pressable>
 
-      <Card>
-        <View style={[styles.headerRow, isMobile && { flexDirection: 'column', alignItems: 'flex-start' }]}>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text style={styles.brand}>{product.brand_name}</Text>
-            <Text style={styles.sub}>
-              {product.dosage_form || 'Unknown form'}
-              {product.registration_number ? ` · Registration #${product.registration_number}` : ' · Unregistered'}
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+      <Card style={styles.heroCard} elevated>
+        <View style={[styles.headerRow, isMobile && styles.headerRowMobile]}>
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>MEDICINE REGISTRY RECORD</Text>
+            <Text accessibilityRole="header" style={styles.brand}>{product.brand_name}</Text>
+            <Text style={styles.sub}>{product.dosage_form || 'Unknown form'} · {product.registration_number ? `Registration #${product.registration_number}` : 'No registration number displayed'}</Text>
+            <View style={styles.statusLine}>
               <Badge status={product.safety_status} />
-              <Text style={isSafe ? styles.safeText : styles.unsafeText}>
-                {isSafe ? 'Safe to use as prescribed' : 'Not safe — see alerts below'}
-              </Text>
+              <Text style={isSafe ? styles.safeText : styles.unsafeText}>{isSafe ? 'Registry status is currently marked safe.' : 'Registry status needs attention — review the alerts below.'}</Text>
             </View>
           </View>
-          <View style={[styles.infoBox, isMobile && { width: '100%' }]}>
+          <View style={[styles.infoBox, isMobile && styles.infoBoxMobile]}>
+            <Text style={styles.infoBoxTitle}>Record details</Text>
             <InfoRow label="Manufacturer" value={product.manufacturer_name || 'Unknown'} />
-            <InfoRow label="Manufacturer ID" value={product.manufacturer_id ? String(product.manufacturer_id).slice(0, 8) + '…' : '—'} />
             <InfoRow label="Country" value={product.manufacturer_country || '—'} />
-            <InfoRow label="Registration Date" value={product.registration_date ? new Date(product.registration_date).toLocaleDateString() : '—'} />
+            <InfoRow label="Registration date" value={product.registration_date ? new Date(product.registration_date).toLocaleDateString() : '—'} />
           </View>
         </View>
       </Card>
 
+      {!isSafe ? <Alert tone="warning" title="Review this registry status" message="This record is not currently marked safe. Review the associated batch and safety-alert information before making a medication decision." /> : null}
+
       <Card>
-        <Text style={styles.sectionTitle}>Ingredients</Text>
+        <SectionTitle subtitle="Active ingredients and recorded strengths from this registry entry.">Ingredients</SectionTitle>
         {product.ingredients.length === 0 ? (
           <Text style={styles.muted}>No ingredient data available.</Text>
         ) : (
@@ -91,7 +87,7 @@ export default function MedicineDetailPage() {
 
       {product.batches && product.batches.length > 0 ? (
         <Card>
-          <Text style={styles.sectionTitle}>Batch Details</Text>
+          <SectionTitle subtitle="Recorded batches associated with this medicine.">Batch details</SectionTitle>
           <View style={{ gap: 10, marginTop: 10 }}>
             {product.batches.map((b: any) => (
               <View key={b.batch_id} style={styles.batchBox}>
@@ -112,7 +108,7 @@ export default function MedicineDetailPage() {
 
       {product.notices && product.notices.length > 0 ? (
         <Card>
-          <Text style={styles.sectionTitle}>Safety Alerts</Text>
+          <SectionTitle subtitle="Official safety notices linked to this medicine record.">Safety alerts</SectionTitle>
           <View style={{ gap: 12, marginTop: 10 }}>
             {product.notices.map((n: any) => (
               <View key={n.notice_id} style={styles.noticeBox}>
@@ -136,18 +132,13 @@ export default function MedicineDetailPage() {
 
       {!isSafe && user?.role !== 'patient' && product.alternatives && product.alternatives.length > 0 ? (
         <Card>
-          <Text style={styles.sectionTitle}>Safe Alternatives</Text>
-          <Text style={styles.muted}>
-            {product.ai_powered
-              ? 'AI-recommended alternative from the RxGuard database'
-              : `Ranked by ingredient similarity to ${product.brand_name}`}
-          </Text>
+          <SectionTitle subtitle={product.ai_powered ? 'AI-ranked candidates from available active registry records.' : `Ranked by ingredient similarity to ${product.brand_name}.`}>Possible alternatives</SectionTitle>
           {product.ai_powered && product.ai_reason ? (
-            <View style={{ backgroundColor: '#EEF2FF', borderRadius: 8, padding: 10, marginTop: 10 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#4338CA', marginBottom: 2 }}>AI Reasoning</Text>
-              <Text style={{ fontSize: 12, color: '#4338CA', lineHeight: 17 }}>{product.ai_reason}</Text>
+            <View style={styles.aiReasoning}>
+              <View style={styles.aiReasoningHeader}><Text style={styles.aiLabel}>AI RANKING NOTE</Text><Text style={styles.aiPowered}>AI-powered</Text></View>
+              <Text style={styles.aiReasoningText}>{product.ai_reason}</Text>
             </View>
-          ) : null}
+          ) : <Text style={styles.muted}>These candidates are ranked from available registry information; the ranking is not a prescribing instruction.</Text>}
           <View style={{ gap: 10, marginTop: 12 }}>
             {product.alternatives.map((alt: any, idx: number) => (
               <Pressable
@@ -177,17 +168,13 @@ export default function MedicineDetailPage() {
               </Pressable>
             ))}
           </View>
-          <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, padding: 10, marginTop: 8 }}>
-            <Text style={{ fontSize: 11.5, color: '#92400E', lineHeight: 16 }}>
-              Please confirm any medicine substitution with a qualified healthcare professional.
-            </Text>
-          </View>
+          <Alert tone="warning" message="Confirm any medicine substitution with a qualified healthcare professional." />
         </Card>
       ) : null}
 
       {product.sources && product.sources.length > 0 ? (
         <Card>
-          <Text style={styles.sectionTitle}>Sources</Text>
+          <SectionTitle subtitle="Source records attached to this medicine entry.">Registry sources</SectionTitle>
           <View style={{ gap: 8, marginTop: 10 }}>
             {product.sources.map((s: any, i: number) => (
               <View key={i} style={styles.sourceRow}>
@@ -215,48 +202,53 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.aliceBlue },
-  content: { padding: 20, gap: 14, maxWidth: 900, width: '100%', alignSelf: 'center' as const, paddingBottom: 60 },
-  backBtn: { alignSelf: 'flex-start', paddingVertical: 6 },
-  backText: { color: C.primary, fontWeight: '700', fontSize: 14 },
-  headerRow: { flexDirection: 'row', gap: 20 },
-  brand: { fontSize: 24, fontWeight: '800', color: C.text },
-  sub: { fontSize: 14, color: C.textSecondary },
-  safeText: { color: C.green, fontWeight: '600', fontSize: 13 },
-  unsafeText: { color: C.red, fontWeight: '600', fontSize: 13 },
-  infoBox: { width: 280, backgroundColor: C.gray50, borderRadius: 12, padding: 14, gap: 8, borderWidth: 1, borderColor: C.border },
-  infoLabel: { fontSize: 12.5, color: C.textSecondary },
-  infoValue: { fontSize: 12.5, color: C.text, fontWeight: '600', flexShrink: 1 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: C.text },
-  muted: { fontSize: 13, color: C.textSecondary, marginTop: 2 },
-  ingredientRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: C.gray50,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  ingredientName: { fontSize: 14, fontWeight: '600', color: C.text, flex: 1 },
-  ingredientStrength: { fontSize: 13, color: C.textSecondary },
-  batchBox: { padding: 12, borderRadius: 12, backgroundColor: C.redBg, borderWidth: 1, borderColor: '#FECACA', gap: 4 },
-  batchNumber: { fontSize: 14.5, fontWeight: '800', color: C.red },
-  batchMeta: { fontSize: 12.5, color: C.textSecondary },
-  batchRemarks: { fontSize: 12.5, color: C.text },
-  noticeBox: { padding: 14, borderRadius: 12, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border, gap: 6 },
-  noticeId: { fontSize: 12.5, fontWeight: '700', color: C.primary },
-  noticeDate: { fontSize: 12, color: C.textSecondary },
-  noticeTitle: { fontSize: 14.5, fontWeight: '700', color: C.text },
-  noticeBody: { fontSize: 13, color: C.text, lineHeight: 19 },
-  noticeSource: { fontSize: 12, color: C.textSecondary, fontStyle: 'italic' },
-  altBox: { padding: 14, borderRadius: 12, backgroundColor: C.greenBg, borderWidth: 1, borderColor: '#BBF7D0', gap: 5 },
-  altName: { fontSize: 15.5, fontWeight: '800', color: C.text, flex: 1 },
-  scoreChip: { backgroundColor: C.primary, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  scoreText: { color: C.white, fontWeight: '800', fontSize: 12 },
-  altGeneric: { fontSize: 13, color: C.text },
-  altShared: { fontSize: 12.5, color: C.green, fontWeight: '600' },
-  altMeta: { fontSize: 12, color: C.textSecondary },
-  sourceRow: { padding: 12, borderRadius: 10, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border, gap: 2 },
-  sourceName: { fontSize: 13.5, fontWeight: '700', color: C.text },
-  sourceMeta: { fontSize: 12, color: C.textSecondary },
+  content: { padding: 24, gap: 16, maxWidth: 960, width: '100%', alignSelf: 'center' as const, paddingBottom: 64 },
+  errorActions: { alignItems: 'center', marginTop: -12, marginBottom: 6 },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 5 },
+  backText: { color: C.primaryDark, fontWeight: '800', fontSize: 13 },
+  heroCard: { backgroundColor: C.white },
+  headerRow: { flexDirection: 'row', gap: 22, alignItems: 'flex-start' },
+  headerRowMobile: { flexDirection: 'column' },
+  headerCopy: { flex: 1, gap: 7, minWidth: 220 },
+  eyebrow: { color: C.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
+  brand: { fontSize: 28, lineHeight: 34, fontWeight: '900', color: C.navy, letterSpacing: -0.55 },
+  sub: { fontSize: 13.5, color: C.textSecondary, lineHeight: 20 },
+  statusLine: { flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 3 },
+  safeText: { color: C.green, fontWeight: '700', fontSize: 12 },
+  unsafeText: { color: C.red, fontWeight: '700', fontSize: 12, flexShrink: 1 },
+  infoBox: { width: 280, backgroundColor: C.gray50, borderRadius: 14, padding: 14, gap: 8, borderWidth: 1, borderColor: C.border },
+  infoBoxMobile: { width: '100%' },
+  infoBoxTitle: { color: C.navy, fontWeight: '900', fontSize: 12.5, marginBottom: 2 },
+  infoLabel: { fontSize: 11.5, color: C.textSecondary },
+  infoValue: { fontSize: 11.5, color: C.text, fontWeight: '700', flexShrink: 1 },
+  muted: { fontSize: 12.5, color: C.textSecondary, marginTop: 9, lineHeight: 19 },
+  ingredientRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 12, borderRadius: 11, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border, gap: 12 },
+  ingredientName: { fontSize: 13.5, fontWeight: '800', color: C.text, flex: 1 },
+  ingredientStrength: { fontSize: 12.5, color: C.textSecondary, textAlign: 'right' },
+  batchBox: { padding: 13, borderRadius: 13, backgroundColor: C.redBg, borderWidth: 1, borderColor: '#F2C0C7', gap: 5 },
+  batchNumber: { fontSize: 14, fontWeight: '900', color: C.red },
+  batchMeta: { fontSize: 12, color: C.textSecondary },
+  batchRemarks: { fontSize: 12.5, color: C.text, lineHeight: 18 },
+  noticeBox: { padding: 14, borderRadius: 13, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border, gap: 6 },
+  noticeId: { fontSize: 11.5, fontWeight: '800', color: C.primaryDark },
+  noticeDate: { fontSize: 11, color: C.textSecondary },
+  noticeTitle: { fontSize: 14, fontWeight: '900', color: C.text },
+  noticeBody: { fontSize: 12.5, color: C.text, lineHeight: 19 },
+  noticeSource: { fontSize: 11.5, color: C.textSecondary, fontStyle: 'italic' },
+  aiReasoning: { backgroundColor: '#F0ECFF', borderRadius: 13, padding: 13, marginTop: 12, borderWidth: 1, borderColor: '#DDD3FF', gap: 5 },
+  aiReasoningHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  aiLabel: { fontSize: 9.5, letterSpacing: 0.8, color: '#6046B2', fontWeight: '900' },
+  aiPowered: { fontSize: 9.5, color: '#6046B2', fontWeight: '900', backgroundColor: C.white, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999 },
+  aiReasoningText: { fontSize: 12, color: '#493C7A', lineHeight: 18 },
+  altBox: { padding: 14, borderRadius: 13, backgroundColor: C.greenBg, borderWidth: 1, borderColor: '#B7E5D8', gap: 5 },
+  altName: { fontSize: 14.5, fontWeight: '900', color: C.text, flex: 1 },
+  scoreChip: { backgroundColor: C.green, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  scoreText: { color: C.white, fontWeight: '900', fontSize: 11 },
+  altGeneric: { fontSize: 12.5, color: C.text },
+  altShared: { fontSize: 12, color: C.green, fontWeight: '700' },
+  altMeta: { fontSize: 11.5, color: C.textSecondary },
+  sourceRow: { padding: 12, borderRadius: 11, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border, gap: 2 },
+  sourceName: { fontSize: 13, fontWeight: '800', color: C.text },
+  sourceMeta: { fontSize: 11.5, color: C.textSecondary },
+  pressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
 });

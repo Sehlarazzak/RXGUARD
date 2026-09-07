@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { api } from '@/lib/api';
-import { Card, C, EmptyState, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
+import { Alert, Button, Card, C, EmptyState, LoadingPanel, PageHeader, PageShell, SectionTitle, useConfirm } from '@/components/ui';
 
 interface PendingDoctor {
   user_id: string;
@@ -56,23 +56,27 @@ export default function AdminApprovalsPage() {
   };
 
   if (pending === null) {
-    return <View style={{ flex: 1, justifyContent: 'center' }}><Spinner label="Loading pending approvals..." /></View>;
+    return (
+      <PageShell>
+        <PageHeader eyebrow="Administration" title="Doctor approvals" subtitle="Review doctor registration details before prescription permissions are enabled." />
+        <LoadingPanel label="Loading pending registrations…" />
+      </PageShell>
+    );
   }
 
   return (
     <PageShell>
       {dialog}
-      <View>
-        <Text style={styles.title}>Doctor Approvals</Text>
-        <Text style={styles.subtitle}>
-          Verify doctor credentials (license number and clinic) before they can save and print prescriptions.
-        </Text>
-      </View>
+      <PageHeader
+        eyebrow="Administration"
+        title="Doctor approvals"
+        subtitle="Review registration details before a doctor can save and print prescriptions."
+      />
 
-      {error ? <Card><Text style={{ color: C.red }}>{error}</Text></Card> : null}
+      {error ? <Alert tone="error" title="Could not update approvals" message={error} action={<Button title="Retry" size="sm" variant="secondary" onPress={load} />} /> : null}
 
-      <Card>
-        <SectionTitle>{pending.length} pending registration{pending.length === 1 ? '' : 's'}</SectionTitle>
+      <Card elevated>
+        <SectionTitle subtitle="Approval enables prescription draft saving and printing.">{pending.length} pending registration{pending.length === 1 ? '' : 's'}</SectionTitle>
         {pending.length === 0 ? (
           <View style={{ marginTop: 10 }}>
             <EmptyState title="No pending approvals." subtitle="New doctor registrations will appear here for verification." />
@@ -93,21 +97,21 @@ export default function AdminApprovalsPage() {
                     </View>
                     <Text style={styles.date}>Registered {new Date(d.created_at).toLocaleString()}</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                    <Pressable
-                      style={[styles.btn, busyId === d.user_id && { opacity: 0.5 }]}
+                  <View style={[styles.actionRow, isMobile && styles.actionRowMobile]}>
+                    <Button
+                      title="Approve"
+                      variant="success"
+                      size="sm"
                       disabled={busyId === d.user_id}
                       onPress={() => decide(d, 'approved')}
-                    >
-                      <Text style={styles.btnText}>✓ Approve</Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.btnReject, busyId === d.user_id && { opacity: 0.5 }]}
+                    />
+                    <Button
+                      title="Reject"
+                      variant="danger"
+                      size="sm"
                       disabled={busyId === d.user_id}
                       onPress={() => decide(d, 'rejected')}
-                    >
-                      <Text style={styles.btnRejectText}>✕ Reject</Text>
-                    </Pressable>
+                    />
                   </View>
                 </View>
               </View>
@@ -128,8 +132,6 @@ function Chip({ label }: { label: string }) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 2 },
   card: {
     borderWidth: 1,
     borderColor: C.border,
@@ -138,6 +140,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   cardRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  actionRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  actionRowMobile: { width: '100%', justifyContent: 'flex-start' },
   name: { fontSize: 16.5, fontWeight: '800', color: C.text },
   meta: { fontSize: 13, color: C.textSecondary },
   chip: {
@@ -150,20 +154,4 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 11.5, color: C.primaryDark, fontWeight: '600' },
   date: { fontSize: 11.5, color: C.textSecondary },
-  btn: {
-    backgroundColor: C.green,
-    borderRadius: 10,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-  },
-  btnText: { color: C.white, fontWeight: '700', fontSize: 13.5 },
-  btnReject: {
-    borderWidth: 1.5,
-    borderColor: C.red,
-    borderRadius: 10,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    backgroundColor: C.white,
-  },
-  btnRejectText: { color: C.red, fontWeight: '700', fontSize: 13.5 },
 });

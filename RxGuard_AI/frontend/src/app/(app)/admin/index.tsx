@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { api } from '@/lib/api';
-import { Badge, Card, C, EmptyState, Spinner } from '@/components/ui';
+import { Alert, Badge, Button, Card, C, EmptyState, PageHeader, Spinner } from '@/components/ui';
 
 interface MedicineRow {
   product_id: string;
@@ -157,24 +157,21 @@ export default function AdminMedicinesPage() {
 
   return (
     <View style={styles.page}>
-      {/* Centralized search */}
-      <View style={styles.searchWrap}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Medicines & DRAP Registry</Text>
-          <Text style={styles.subtitle}>
-            Search by name, ingredient, registration number, manufacturer, DRAP alert number or batch number
-          </Text>
-        </View>
-      </View>
+      <PageHeader
+        eyebrow="Administration"
+        title="Medicine registry"
+        subtitle="Search active records by product, ingredient, registration number, manufacturer, DRAP alert number, or batch number."
+      />
 
-      <View style={styles.searchBar}>
+      <View style={styles.searchBar}> 
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
+          accessibilityLabel="Search medicine registry"
           value={search}
           onChangeText={(t) => {
             setSearch(t);
           }}
-          placeholder="Search the registry..."
+          placeholder="Search the registry…"
           placeholderTextColor="#9CA3AF"
           style={styles.searchInput}
         />
@@ -185,17 +182,15 @@ export default function AdminMedicinesPage() {
         ) : null}
       </View>
 
-      {error ? (
-        <Card>
-          <Text style={{ color: C.red }}>{error}</Text>
-        </Card>
-      ) : null}
+      {error ? <Alert tone="error" title="Registry data could not be loaded" message={error} action={<Button title="Retry" size="sm" variant="secondary" onPress={loadRows} />} /> : null}
 
       <View style={[styles.body, isWide && styles.bodyWide]}>
         {/* LEFT: filter panel */}
         <View style={isWide ? styles.filterPanel : styles.filterPanelNarrow}>
-          <Card>
+          <Card elevated>
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showFilters }}
               style={styles.filterHeader}
               onPress={() => setShowFilters(!showFilters)}
             >
@@ -285,7 +280,7 @@ export default function AdminMedicinesPage() {
 
         {/* CENTER: results */}
         <View style={styles.results}>
-          <Card style={{ flex: 1, gap: 10 }}>
+          <Card style={{ flex: 1, gap: 10 }} elevated>
             <View style={styles.resultsHeader}>
               <Text style={styles.resultsTitle}>
                 {rows === null ? 'Loading...' : `${total} medicine${total === 1 ? '' : 's'}`}
@@ -419,7 +414,7 @@ function RecordPanel({
 }) {
   if (loading || !detail) {
     return (
-      <Card style={styles.detailCard}>
+      <Card style={styles.detailCard} elevated>
         <View style={styles.detailHeader}>
           <Text style={styles.detailTitle}>Record</Text>
           <Pressable onPress={onClose} hitSlop={8}>
@@ -436,7 +431,7 @@ function RecordPanel({
   const missing: string[] = detail.completeness?.missing || [];
 
   return (
-    <Card style={styles.detailCard}>
+    <Card style={styles.detailCard} elevated>
       <View style={styles.detailHeader}>
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={styles.detailTitle} numberOfLines={2}>{detail.brand_name}</Text>
@@ -483,9 +478,7 @@ function RecordPanel({
         )}
       </View>
 
-      <Pressable style={styles.editBtn} onPress={onEdit}>
-        <Text style={styles.editBtnText}>✎ Edit record</Text>
-      </Pressable>
+      <Button title="Edit record" onPress={onEdit} />
 
       <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ gap: 16, paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
         {/* Relationship node map */}
@@ -880,16 +873,12 @@ function EditModal({
                 style={[styles.dateInput, { height: 84, textAlignVertical: 'top' }]}
               />
             </View>
-            {error ? <Text style={{ color: C.red, fontSize: 13 }}>{error}</Text> : null}
+            {error ? <Alert tone="error" title="Could not save record" message={error} /> : null}
           </ScrollView>
 
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-            <Pressable style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
-              <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save changes'}</Text>
-            </Pressable>
-            <Pressable style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </Pressable>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+            <Button title="Save changes" loading={saving} onPress={save} />
+            <Button title="Cancel" variant="secondary" onPress={onClose} />
           </View>
         </Pressable>
       </Pressable>
@@ -898,10 +887,7 @@ function EditModal({
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: C.aliceBlue, padding: 20, gap: 14, maxWidth: 1500, width: '100%', alignSelf: 'center' as const },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 13.5, color: C.textSecondary, marginTop: 2 },
+  page: { flex: 1, backgroundColor: C.aliceBlue, padding: 24, gap: 18, maxWidth: 1500, width: '100%', alignSelf: 'center' as const },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -981,13 +967,6 @@ const styles = StyleSheet.create({
   boxLabel: { fontSize: 12.5, fontWeight: '800', color: C.text, textTransform: 'capitalize' },
   missingChip: { backgroundColor: C.redBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   missingChipText: { color: C.red, fontSize: 10.5, fontWeight: '700' },
-  editBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  editBtnText: { color: C.white, fontWeight: '700', fontSize: 13.5 },
   infoBox: { gap: 6 },
   infoRow: { fontSize: 13.5, color: C.text, lineHeight: 20 },
   infoSub: { fontSize: 12, color: C.textSecondary },
@@ -1065,8 +1044,4 @@ const styles = StyleSheet.create({
   },
   editTitle: { fontSize: 19, fontWeight: '800', color: C.text },
   editSub: { fontSize: 13, color: C.textSecondary, marginBottom: 10 },
-  saveBtn: { flex: 1, backgroundColor: C.primary, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  saveBtnText: { color: C.white, fontWeight: '700', fontSize: 14.5 },
-  cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: C.border, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: C.white },
-  cancelBtnText: { color: C.textSecondary, fontWeight: '700', fontSize: 14.5 },
 });

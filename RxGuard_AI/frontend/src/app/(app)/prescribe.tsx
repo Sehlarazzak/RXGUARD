@@ -13,7 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/auth';
-import { Badge, Button, C, Card, Spinner } from '@/components/ui';
+import { Alert, Badge, Button, C, Card, PageHeader, SectionTitle } from '@/components/ui';
 
 interface AnalysisItem {
   line: string;
@@ -296,39 +296,35 @@ export default function PrescribePage() {
 
   return (
     <View style={[styles.page, isMobile && styles.pageColumn]}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Prescribe New Patient</Text>
-            <Text style={styles.subtitle}>
-              Type the prescription on the notepad. After saving the draft, the sidebar lists each medicine with its
-              safety status.
-            </Text>
-          </View>
-        </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <PageHeader
+          eyebrow="Doctor workspace"
+          title="Prescription workspace"
+          subtitle="Select a patient file, prepare a draft, and review its current registry safety status before printing."
+          actions={fileId ? <View style={styles.selectedPill}><Text style={styles.selectedPillText}>Patient file selected</Text></View> : undefined}
+        />
 
         {user?.approval_status !== 'approved' ? (
-          <Card style={{ backgroundColor: C.amberBg, borderColor: '#FDE68A' }}>
-            <Text style={{ color: C.amber, fontWeight: '700' }}>Awaiting administrator approval</Text>
-            <Text style={{ color: C.amber, fontSize: 13, marginTop: 4 }}>
-              You can draft prescriptions, but saving and printing unlock once an admin verifies your license.
-            </Text>
-          </Card>
+          <Alert
+            tone="warning"
+            title="Awaiting administrator approval"
+            message="You can prepare the prescription workspace, but saving and printing unlock after an administrator verifies your registration."
+          />
         ) : null}
 
-        {error ? <Card><Text style={{ color: C.red }}>{error}</Text></Card> : null}
-        {success ? <Card><Text style={{ color: C.green }}>{success}</Text></Card> : null}
+        {error ? <Alert tone="error" title="Workspace update failed" message={error} /> : null}
+        {success ? <Alert tone="success" title="Workspace updated" message={success} /> : null}
 
-        {/* Patient file selector — in-flow so it never overlaps the action buttons */}
-        <Card style={styles.patientCard}>
-          <Text style={styles.notepadLabel}>Patient File</Text>
-          <Text style={styles.fileHint}>
-            Select the patient this prescription is for, or create a new file. Drafts are saved into the selected file.
-          </Text>
+        {/* Patient file selector stays in flow so it never overlaps workspace actions. */}
+        <Card style={styles.patientCard} elevated>
+          <SectionTitle subtitle="Drafts are kept in the selected patient file.">Patient file</SectionTitle>
           <View style={styles.fileOptions}>
             {files.map((f) => (
               <Pressable
                 key={f.file_id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: fileId === f.file_id }}
+                accessibilityLabel={`Select ${f.patient_name}`}
                 onPress={() => {
                   // Re-target the file without wiping the notepad: the doctor may
                   // want to keep typing and save into the newly selected file.
@@ -344,60 +340,59 @@ export default function PrescribePage() {
                 </Text>
               </Pressable>
             ))}
-            {files.length === 0 ? (
-              <Text style={styles.fileHint}>No patient files yet — create the first one below.</Text>
-            ) : null}
+            {files.length === 0 ? <Text style={styles.fileHint}>No patient files yet — create the first one below.</Text> : null}
           </View>
-          <View style={styles.newPatientRow}>
+          <View style={[styles.newPatientRow, isMobile && styles.newPatientRowMobile]}>
             <TextInput
               value={newPatient}
               onChangeText={setNewPatient}
-              placeholder="New patient name..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.newPatientInput}
+              placeholder="New patient name"
+              placeholderTextColor={C.textMuted}
+              accessibilityLabel="New patient name"
+              style={[styles.newPatientInput, isMobile && styles.newPatientInputMobile]}
+              onSubmitEditing={createFolder}
             />
-            <Pressable style={styles.newPatientBtn} onPress={createFolder}>
-              <Text style={styles.newPatientBtnText}>Create</Text>
-            </Pressable>
+            <Button title="Create file" size="sm" onPress={createFolder} disabled={!newPatient.trim()} />
           </View>
           {fileId ? (
-            <Text style={styles.selectedFile}>
-              Writing for:{' '}
-              <Text style={{ fontWeight: '800' }}>
-                {files.find((f) => f.file_id === fileId)?.patient_name || 'selected patient'}
+            <View style={styles.selectedFileRow}>
+              <View style={styles.selectedFileDot} />
+              <Text style={styles.selectedFile}>
+                Writing for <Text style={{ fontWeight: '800' }}>{files.find((f) => f.file_id === fileId)?.patient_name || 'selected patient'}</Text>
               </Text>
-            </Text>
+            </View>
           ) : (
-            <Text style={styles.selectedFileWarn}>No patient selected — pick a file above before saving.</Text>
+            <Text style={styles.selectedFileWarn}>Choose a patient file before saving or printing.</Text>
           )}
         </Card>
 
-        <Card style={styles.notepadCard}>
-          <Text style={styles.notepadLabel}>Prescription Notepad</Text>
+        <Card style={styles.notepadCard} elevated>
+          <SectionTitle subtitle="Use one line per medicine. Suggestions insert an active registry record into the current line.">Prescription notepad</SectionTitle>
           <View style={{ position: 'relative' }}>
             <TextInput
               value={content}
               onChangeText={onContentChange}
               multiline
-              placeholder="Enter your prescription here…"
-              placeholderTextColor="#9CA3AF"
+              accessibilityLabel="Prescription notepad"
+              placeholder="Enter the prescription here…"
+              placeholderTextColor={C.textMuted}
               style={styles.notepad}
             />
             {showSuggest && suggestions.length > 0 ? (
-              <View style={styles.suggestBox}>
-                <Text style={styles.suggestHint}>Suggestions — tap to insert on the current line</Text>
-                <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
+              <View style={[styles.suggestBox, isMobile && styles.suggestBoxMobile]}>
+                <Text style={styles.suggestHint}>Registry suggestions — tap to insert on the current line</Text>
+                <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                   {suggestions.map((s) => (
                     <Pressable
                       key={s.product_id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Insert ${s.brand_name}`}
                       style={styles.suggestItem}
                       onPress={() => applySuggestion(s.brand_name)}
                     >
                       <View style={{ flex: 1, gap: 2 }}>
                         <Text style={styles.suggestName}>{s.brand_name}</Text>
-                        <Text style={styles.suggestSub}>
-                          {s.dosage_form || '—'} · {s.manufacturer_name || 'Unknown manufacturer'}
-                        </Text>
+                        <Text style={styles.suggestSub}>{s.dosage_form || '—'} · {s.manufacturer_name || 'Unknown manufacturer'}</Text>
                       </View>
                       <Badge status={s.safety_status} small />
                     </Pressable>
@@ -406,37 +401,42 @@ export default function PrescribePage() {
               </View>
             ) : null}
           </View>
-          <View style={[styles.btnRow, isMobile && { flexDirection: 'column' }]}>
-            <Button title={saving ? 'Saving...' : 'Save Draft'} variant="secondary" onPress={saveDraft} loading={saving} disabled={user?.approval_status !== 'approved'} />
-            <Button title={analyzing ? 'Checking...' : 'Check Safety'} variant="secondary" onPress={runAnalysis} loading={analyzing} />
-            <View style={{ flex: 1 }} />
+          <View style={[styles.btnRow, isMobile && styles.btnRowMobile]}>
+            <Button title="Save draft" variant="secondary" onPress={saveDraft} loading={saving} disabled={user?.approval_status !== 'approved'} />
+            <Button title="Check safety" variant="secondary" onPress={runAnalysis} loading={analyzing} />
             <Button
-              title={allSafe ? 'Print Prescription' : 'Print (all medicines must be safe)'}
+              title={allSafe ? 'Print prescription' : 'Printing locked'}
               variant={allSafe ? 'primary' : 'secondary'}
               onPress={print}
               loading={printing}
               disabled={!allSafe || user?.approval_status !== 'approved'}
-              style={!allSafe ? { opacity: 0.6 } : null}
+              style={[styles.printButton, !allSafe && { opacity: 0.65 }]}
             />
           </View>
         </Card>
       </ScrollView>
 
-      {/* Sidebar with per-medicine safety status */}
-      <View style={[styles.sidebar, isMobile && { width: '100%', maxHeight: 320 }]}>
-        <Text style={styles.sidebarTitle}>Medicine Status</Text>
-        <Text style={styles.sidebarHint}>
-          {analysis ? `${analysis.total} medicine${analysis.total === 1 ? '' : 's'} detected` : 'Hit "Save Draft" to analyse'}
-        </Text>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 8, paddingVertical: 10 }}>
+      {/* Sidebar with per-medicine safety status. */}
+      <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+        <View style={styles.sidebarHeader}>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={styles.sidebarTitle}>Safety review</Text>
+            <Text style={styles.sidebarHint}>
+              {analysis ? `${analysis.total} medicine${analysis.total === 1 ? '' : 's'} detected` : 'Run a safety check to begin'}
+            </Text>
+          </View>
+          {analysis ? <Badge status={allSafe ? 'safe' : 'pending'} small /> : null}
+        </View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 8, paddingVertical: 14 }} showsVerticalScrollIndicator={false}>
           {analyzing ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+            <View style={{ paddingVertical: 26, alignItems: 'center' }}>
               <ActivityIndicator color={C.primary} />
+              <Text style={styles.sidebarLoading}>Checking registry records…</Text>
             </View>
           ) : !analysis ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center', gap: 6 }}>
+            <View style={{ paddingVertical: 24, alignItems: 'center', gap: 7 }}>
               <Text style={styles.sidebarEmptyIcon}>℞</Text>
-              <Text style={styles.sidebarEmpty}>The medicines you type will be classified here once you save the draft.</Text>
+              <Text style={styles.sidebarEmpty}>The medicines entered in the notepad appear here after a safety check or draft save.</Text>
             </View>
           ) : (
             analysis.items.map((item, idx) => (
@@ -446,26 +446,24 @@ export default function PrescribePage() {
                     {item.matched_name || item.line}
                   </Text>
                   <Text style={styles.medicineMeta}>
-                    {item.match === 'recognized' ? `${item.safety_status} · ${Math.round(item.confidence * 100)}% match` : 'Not found in database'}
+                    {item.match === 'recognized' ? `${item.safety_status.replace(/_/g, ' ')} · ${Math.round(item.confidence * 100)}% match` : 'No matching registry record found'}
                   </Text>
                 </View>
                 {!item.safe && item.product_id ? (
-                  <Pressable style={styles.learnMoreBtn} onPress={() => openPopup(item.product_id!)}>
-                    <Text style={styles.learnMoreText}>Learn more</Text>
+                  <Pressable accessibilityRole="button" style={styles.learnMoreBtn} onPress={() => openPopup(item.product_id!)}>
+                    <Text style={styles.learnMoreText}>Review</Text>
                   </Pressable>
-                ) : item.safe ? (
-                  <Badge status="safe" small />
-                ) : null}
+                ) : item.safe ? <Badge status="safe" small /> : null}
               </View>
             ))
           )}
         </ScrollView>
         {analysis ? (
-          <View style={[styles.allSafeBanner, allSafe ? { backgroundColor: C.greenBg } : { backgroundColor: C.redBg }]}>
-            <Text style={{ color: allSafe ? C.green : C.red, fontWeight: '700', fontSize: 12.5, textAlign: 'center' }}>
+          <View style={[styles.allSafeBanner, allSafe ? styles.allSafeBannerPositive : styles.allSafeBannerNegative]}>
+            <Text style={[styles.allSafeText, { color: allSafe ? C.green : C.red }]}>
               {allSafe
-                ? 'All medicines are safe. Printing is enabled.'
-                : 'Some medicines are not safe. Replace them with alternatives before printing.'}
+                ? 'All listed medicines currently have a safe registry status. Printing is enabled.'
+                : 'One or more entries need review. Printing remains unavailable until every entry is marked safe.'}
             </Text>
           </View>
         ) : null}
@@ -659,11 +657,10 @@ function LearnMorePopup({
 const styles = StyleSheet.create({
   page: { flex: 1, flexDirection: 'row', backgroundColor: C.aliceBlue },
   pageColumn: { flexDirection: 'column' },
-  scrollContent: { flex: 1, padding: 20, gap: 14, maxWidth: 1100, width: '100%', alignSelf: 'center' },
-  headerRow: { flexDirection: 'row' },
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 2, lineHeight: 20 },
-  notepadCard: { flex: 1 },
+  scrollContent: { flex: 1, padding: 24, gap: 18, maxWidth: 1040, width: '100%', alignSelf: 'center' },
+  selectedPill: { backgroundColor: C.greenBg, borderWidth: 1, borderColor: '#B7E5D8', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 7 },
+  selectedPillText: { color: C.green, fontSize: 11.5, fontWeight: '800' },
+  notepadCard: { flex: 1, gap: 14 },
   notepadLabel: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 10 },
   notepad: {
     // 12in x 12in notepad -> generous square canvas with 18pt black text
@@ -678,18 +675,23 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     lineHeight: 30,
   },
-  btnRow: { flexDirection: 'row', gap: 10, marginTop: 14, alignItems: 'center' },
+  btnRow: { flexDirection: 'row', gap: 10, marginTop: 2, alignItems: 'center', flexWrap: 'wrap' },
+  btnRowMobile: { flexDirection: 'column', alignItems: 'stretch' },
+  printButton: { marginLeft: 'auto' },
   sidebar: {
-    width: 320,
+    width: 340,
     backgroundColor: C.white,
     borderLeftWidth: 1,
     borderLeftColor: C.border,
-    padding: 16,
+    padding: 18,
   },
-  sidebarTitle: { fontSize: 16, fontWeight: '800', color: C.text },
-  sidebarHint: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
+  sidebarMobile: { width: '100%', maxHeight: 360, borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: C.border },
+  sidebarHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  sidebarTitle: { fontSize: 17, fontWeight: '800', color: C.navy },
+  sidebarHint: { fontSize: 12.5, color: C.textSecondary, lineHeight: 18 },
+  sidebarLoading: { fontSize: 12, color: C.textSecondary, marginTop: 10 },
   sidebarEmptyIcon: { fontSize: 34, color: C.primary },
-  sidebarEmpty: { fontSize: 12.5, color: C.textSecondary, textAlign: 'center', lineHeight: 18 },
+  sidebarEmpty: { fontSize: 12.5, color: C.textSecondary, textAlign: 'center', lineHeight: 18, maxWidth: 250 },
   medicineRow: {
     borderRadius: 10,
     padding: 11,
@@ -704,12 +706,17 @@ const styles = StyleSheet.create({
   medicineMeta: { fontSize: 11.5, color: C.textSecondary },
   learnMoreBtn: { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
   learnMoreText: { color: C.white, fontWeight: '700', fontSize: 11.5 },
-  allSafeBanner: { borderRadius: 10, padding: 10, marginTop: 8 },
-  patientCard: { gap: 10 },
-  fileHint: { fontSize: 12.5, color: C.textSecondary },
-  fileOptions: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  allSafeBanner: { borderRadius: 12, padding: 12, marginTop: 4, borderWidth: 1 },
+  allSafeBannerPositive: { backgroundColor: C.greenBg, borderColor: '#B7E5D8' },
+  allSafeBannerNegative: { backgroundColor: C.redBg, borderColor: '#F2C0C7' },
+  allSafeText: { fontWeight: '800', fontSize: 12.5, textAlign: 'center', lineHeight: 18 },
+  patientCard: { gap: 12 },
+  fileHint: { fontSize: 12.5, color: C.textSecondary, lineHeight: 18 },
+  fileOptions: { flexDirection: 'row', gap: 7, flexWrap: 'wrap' },
+  selectedFileRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  selectedFileDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.green },
   selectedFile: { fontSize: 12.5, color: C.green, fontWeight: '600' },
-  selectedFileWarn: { fontSize: 12.5, color: C.amber, fontWeight: '600' },
+  selectedFileWarn: { fontSize: 12.5, color: C.amber, fontWeight: '700' },
   suggestBox: {
     position: 'absolute',
     top: 10,
@@ -728,6 +735,7 @@ const styles = StyleSheet.create({
     elevation: 20,
     zIndex: 300,
   },
+  suggestBoxMobile: { left: 10, width: 'auto' },
   suggestHint: {
     fontSize: 11,
     fontWeight: '700',
@@ -751,20 +759,20 @@ const styles = StyleSheet.create({
   fileChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.white },
   fileChipActive: { borderColor: C.primary, backgroundColor: C.aliceBlue },
   fileChipText: { fontSize: 12, fontWeight: '600', color: C.textSecondary },
-  newPatientRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  newPatientRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  newPatientRowMobile: { alignItems: 'stretch' },
   newPatientInput: {
     borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 12.5,
-    width: 150,
+    borderColor: C.borderStrong,
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    fontSize: 13,
+    width: 190,
     backgroundColor: C.white,
     color: C.text,
   },
-  newPatientBtn: { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
-  newPatientBtnText: { color: C.white, fontWeight: '700', fontSize: 12 },
+  newPatientInputMobile: { flex: 1, width: undefined },
   popup: {
     position: 'absolute',
     top: 70,

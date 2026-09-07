@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensio
 import { useRouter } from 'expo-router';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/context/auth';
-import { Badge, Button, Card, C, EmptyState, Input, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
+import { Alert, Badge, Button, Card, C, EmptyState, Input, LoadingPanel, PageHeader, PageShell, SectionTitle, useConfirm } from '@/components/ui';
 
 interface Prescription {
   prescription_id: string;
@@ -137,26 +137,20 @@ export default function MyPrescriptionsPage() {
   };
 
   if (items === null) {
-    return <View style={{ flex: 1, justifyContent: 'center' }}><Spinner label="Loading your prescriptions..." /></View>;
+    return <PageShell><LoadingPanel label="Loading your prescription records…" /></PageShell>;
   }
 
   return (
     <PageShell>
       {dialog}
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>My Prescriptions</Text>
-          <Text style={styles.subtitle}>Save prescription photos with your own filename and date</Text>
-        </View>
-        <Button title="+ Save Prescription" onPress={() => setShowForm(!showForm)} />
-      </View>
+      <PageHeader eyebrow="Personal records" title="My prescription records" subtitle="Save a photo and notes for your own records. Images are stored for viewing; they are not converted into text." actions={<Button title={showForm ? 'Close form' : 'Save a record'} onPress={() => setShowForm(!showForm)} />} />
 
-      {error ? <Card><Text style={{ color: C.red }}>{error}</Text></Card> : null}
-      {success ? <Card><Text style={{ color: C.green }}>{success}</Text></Card> : null}
+      {error ? <Alert tone="error" title="Unable to update records" message={error} /> : null}
+      {success ? <Alert tone="success" message={success} /> : null}
 
       {showForm ? (
-        <Card>
-          <SectionTitle>Save a Prescription</SectionTitle>
+        <Card elevated>
+          <SectionTitle subtitle="Add a name, a date, optional notes, and an optional image.">Save a prescription record</SectionTitle>
           <View style={{ gap: 12, marginTop: 12 }}>
             <Input label="Filename (your name for this prescription)" value={title} onChangeText={setTitle} placeholder="e.g. June Checkup 2025" autoCapitalize="words" />
             <View style={{ gap: 6 }}>
@@ -167,14 +161,14 @@ export default function MyPrescriptionsPage() {
                 onChange={(e: any) => setRxDate(e.target.value)}
                 max={todayStr()}
                 style={{
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  borderRadius: 10,
-                  padding: '10px 12px',
+                  border: `1px solid ${C.borderStrong}`,
+                  borderRadius: 11,
+                  padding: '11px 12px',
                   fontSize: 14,
                   backgroundColor: C.white,
                   color: C.text,
                   width: '100%',
+                  minHeight: 44,
                   boxSizing: 'border-box' as any,
                 }}
               />
@@ -184,7 +178,7 @@ export default function MyPrescriptionsPage() {
             <View style={{ gap: 8 }}>
               <Text style={styles.label}>Prescription Photo</Text>
               <Button title={imageBase64 ? 'Photo attached \u2713 \u2014 Choose another' : 'Upload a Photo'} variant="secondary" onPress={pickImage} />
-              <Text style={styles.fileHint}>{imageName ? `Selected: ${imageName}` : 'JPG or PNG image'}</Text>
+              <Text style={styles.fileHint}>{imageName ? `Selected: ${imageName}` : 'JPG or PNG image. This is stored as an image only.'}</Text>
             </View>
       
             <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -195,17 +189,17 @@ export default function MyPrescriptionsPage() {
         </Card>
       ) : null}
 
-      <Card>
-        <SectionTitle>{items.length} saved prescription{items.length === 1 ? '' : 's'}</SectionTitle>
+      <Card style={styles.recordsCard}>
+        <SectionTitle subtitle="Select a record to view its uploaded image.">{items.length} saved prescription record{items.length === 1 ? '' : 's'}</SectionTitle>
         <ScrollView style={{ maxHeight: gridMaxHeight }} contentContainerStyle={[styles.grid, isMobile && { flexDirection: 'column' }]} showsVerticalScrollIndicator={false}>
           {items.length === 0 ? (
-            <EmptyState title="No prescriptions yet." subtitle="Save your first prescription photo to keep it as a personal record." />
+            <EmptyState title="No prescription records yet." subtitle="Save a photo or notes to keep your first personal record here." action={<Button title="Save a record" size="sm" onPress={() => setShowForm(true)} />} />
           ) : (
             items.map((p) => {
               const { date } = parseDate(p.details);
               return (
                 <View key={p.prescription_id} style={styles.prescCard}>
-                  <Pressable onPress={() => p.file_name && setViewImage(imageUrl(p.prescription_id))}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`View ${p.title}`} style={({ pressed }) => [styles.thumbWrap, pressed && styles.pressed]} onPress={() => p.file_name && setViewImage(imageUrl(p.prescription_id))}>
                     <View style={styles.thumbWrap}>
                       {p.file_name ? (
                         <img src={imageUrl(p.prescription_id)} style={styles.thumb} alt={p.title} />
@@ -216,7 +210,7 @@ export default function MyPrescriptionsPage() {
                       )}
                     </View>
                   </Pressable>
-                  <View style={{ gap: 4, paddingHorizontal: 4 }}>
+                  <View style={styles.recordCopy}>
                     <Text style={styles.prescTitle} numberOfLines={1}>{p.title}</Text>
                     <Text style={styles.prescDate}>
                       {date ? `Rx date: ${new Date(date).toLocaleDateString()}` : `Uploaded: ${new Date(p.created_at).toLocaleDateString()}`}
@@ -225,16 +219,11 @@ export default function MyPrescriptionsPage() {
                       const { rest } = parseDate(p.details);
                       return rest.trim() ? <Text style={styles.prescNotes} numberOfLines={2}>{rest}</Text> : null;
                     })() : null}
-                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                    <View style={styles.recordActions}>
                       <Badge status={p.status} small />
-                      {p.file_name ? (
-                        <Pressable onPress={() => setViewImage(imageUrl(p.prescription_id))}>
-                          <Text style={styles.viewText}>View</Text>
-                        </Pressable>
-                      ) : null}
-                      <Pressable onPress={() => remove(p.prescription_id)}>
-                        <Text style={styles.deleteText}>Delete</Text>
-                      </Pressable>
+                      <View style={{ flex: 1 }} />
+                      {p.file_name ? <Button title="View" size="sm" variant="ghost" onPress={() => setViewImage(imageUrl(p.prescription_id))} /> : null}
+                      <Button title="Delete" size="sm" variant="ghost" onPress={() => remove(p.prescription_id)} />
                     </View>
                   </View>
                 </View>
@@ -260,46 +249,22 @@ export default function MyPrescriptionsPage() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 2 },
-  label: { fontSize: 13, fontWeight: '600', color: C.text },
-  fileHint: { fontSize: 12, color: C.textSecondary },
+  label: { fontSize: 13, fontWeight: '800', color: C.text },
+  fileHint: { fontSize: 11.5, color: C.textSecondary, lineHeight: 17 },
+  recordsCard: { paddingBottom: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 14 },
-  prescCard: { width: 168, gap: 6 },
-  thumbWrap: { borderRadius: 12, overflow: 'hidden' },
-  thumb: { width: 168, height: 126, borderRadius: 12, objectFit: 'cover' as any, backgroundColor: C.gray100 },
-  thumbPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: C.aliceBlue,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  thumbIcon: { fontSize: 42, color: C.primary, fontWeight: '800' },
-  prescTitle: { fontSize: 14.5, fontWeight: '700', color: C.text },
-  prescDate: { fontSize: 12, color: C.textSecondary },
-  prescNotes: { fontSize: 11.5, color: C.textSecondary, lineHeight: 16 },
-  viewText: { color: C.primary, fontWeight: '700', fontSize: 12 },
-  deleteText: { color: C.red, fontWeight: '700', fontSize: 12 },
-  viewerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  viewerImage: {
-    maxWidth: '90%',
-    maxHeight: '85vh',
-    borderRadius: 12,
-    objectFit: 'contain' as any,
-  } as any,
-  viewerClose: {
-    marginTop: 16,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-  },
+  prescCard: { width: 190, gap: 8, padding: 10, borderRadius: 15, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border },
+  thumbWrap: { borderRadius: 11, overflow: 'hidden' },
+  thumb: { width: '100%', height: 130, borderRadius: 11, objectFit: 'cover' as any, backgroundColor: C.gray100 },
+  thumbPlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.primaryLight, borderWidth: 1, borderColor: C.border },
+  thumbIcon: { fontSize: 39, color: C.primaryDark, fontWeight: '900' },
+  recordCopy: { gap: 4, paddingHorizontal: 2 },
+  prescTitle: { fontSize: 13.5, fontWeight: '900', color: C.text },
+  prescDate: { fontSize: 11.5, color: C.textSecondary },
+  prescNotes: { fontSize: 11, color: C.textSecondary, lineHeight: 15 },
+  recordActions: { flexDirection: 'row', gap: 2, alignItems: 'center', marginTop: 3 },
+  viewerOverlay: { flex: 1, backgroundColor: 'rgba(7,25,45,0.88)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  viewerImage: { maxWidth: '90%', maxHeight: '85vh', borderRadius: 14, objectFit: 'contain' as any } as any,
+  viewerClose: { marginTop: 16, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 24 },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });

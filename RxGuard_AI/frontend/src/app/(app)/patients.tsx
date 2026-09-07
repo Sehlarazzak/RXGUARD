@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/lib/api';
-import { Card, C, EmptyState, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
+import { Alert, Button, Card, C, EmptyState, Input, LoadingPanel, PageHeader, PageShell, SectionTitle, useConfirm } from '@/components/ui';
 
 interface PatientFile {
   file_id: string;
@@ -16,6 +16,7 @@ export default function PastPrescriptionsPage() {
   const router = useRouter();
   const [files, setFiles] = useState<PatientFile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const { width, height } = useWindowDimensions();
   const isMobile = width < 860;
   const gridMaxHeight = Math.max(280, Math.min(560, (height || 800) - 360));
@@ -52,45 +53,41 @@ export default function PastPrescriptionsPage() {
   };
 
   if (files === null) {
-    return <View style={{ flex: 1, justifyContent: 'center' }}><Spinner label="Loading your patient files..." /></View>;
+    return <PageShell><LoadingPanel label="Loading patient files…" /></PageShell>;
   }
+
+  const visibleFiles = files.filter((file) => file.patient_name.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <PageShell>
       {dialog}
-      <View>
-        <Text style={styles.title}>Past Prescriptions</Text>
-        <Text style={styles.subtitle}>Your saved prescriptions, organised in folders by patient name</Text>
-      </View>
+      <PageHeader eyebrow="Doctor workspace" title="Patient files" subtitle="Saved prescriptions are organized by patient, ready to reopen when you need them." actions={<Button title="New prescription" onPress={() => router.push('/prescribe' as any)} />} />
 
-      {error ? <Card><Text style={{ color: C.red }}>{error}</Text></Card> : null}
+      {error ? <Alert tone="error" title="Unable to update patient files" message={error} /> : null}
 
-      <Card>
-        <SectionTitle>{files.length} patient file{files.length === 1 ? '' : 's'}</SectionTitle>
+      <Card style={styles.filterCard}>
+        <Input label="Find a patient" value={query} onChangeText={setQuery} placeholder="Search by patient name…" />
+      </Card>
+
+      <Card style={styles.filesCard}>
+        <SectionTitle subtitle={query ? `${visibleFiles.length} matching patient file${visibleFiles.length === 1 ? '' : 's'}` : 'Open a file to review or continue a prescription.'}>{files.length} patient file{files.length === 1 ? '' : 's'}</SectionTitle>
         <ScrollView style={{ maxHeight: gridMaxHeight }} contentContainerStyle={[styles.grid, isMobile && { flexDirection: 'column' }]} showsVerticalScrollIndicator={false}>
-          {files.length === 0 ? (
+          {visibleFiles.length === 0 ? (
             <EmptyState
-              title="No patient files yet."
-              subtitle="Create your first file from the Prescribe New Patient page."
+              title={query ? 'No patient files match that name.' : 'No patient files yet.'}
+              subtitle={query ? 'Try a different spelling or clear the search.' : 'Create your first file from the prescribing workspace.'}
+              action={!query ? <Button title="Start prescribing" size="sm" onPress={() => router.push('/prescribe' as any)} /> : undefined}
             />
           ) : (
-            files.map((f) => (
+            visibleFiles.map((f) => (
               <View key={f.file_id} style={styles.folderCard}>
-                <Pressable style={{ flex: 1 }} onPress={() => router.push(`/patients/${f.file_id}` as any)}>
-                  <Text style={styles.folderIcon}>🗂️</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Open ${f.patient_name} patient file`} style={({ pressed }) => [styles.folderOpen, pressed && styles.pressed]} onPress={() => router.push(`/patients/${f.file_id}` as any)}>
+                  <View style={styles.folderIcon}><Text style={styles.folderIconText}>▤</Text></View>
                   <Text style={styles.folderName} numberOfLines={1}>{f.patient_name}</Text>
-                  <Text style={styles.folderMeta}>
-                    {f.prescription_count} prescription{Number(f.prescription_count) === 1 ? '' : 's'}
-                  </Text>
-                  {f.last_updated ? (
-                    <Text style={styles.folderDate}>Updated {new Date(f.last_updated).toLocaleDateString()}</Text>
-                  ) : (
-                    <Text style={styles.folderDate}>Created {new Date(f.created_at).toLocaleDateString()}</Text>
-                  )}
+                  <Text style={styles.folderMeta}>{f.prescription_count} prescription{Number(f.prescription_count) === 1 ? '' : 's'}</Text>
+                  <Text style={styles.folderDate}>{f.last_updated ? `Updated ${new Date(f.last_updated).toLocaleDateString()}` : `Created ${new Date(f.created_at).toLocaleDateString()}`}</Text>
                 </Pressable>
-                <Pressable style={styles.deleteBtn} onPress={() => deleteFolder(f)}>
-                  <Text style={styles.deleteBtnText}>Delete</Text>
-                </Pressable>
+                <View style={styles.folderActions}><Button title="Open" size="sm" variant="secondary" onPress={() => router.push(`/patients/${f.file_id}` as any)} /><Button title="Delete" size="sm" variant="ghost" onPress={() => deleteFolder(f)} /></View>
               </View>
             ))
           )}
@@ -101,22 +98,16 @@ export default function PastPrescriptionsPage() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 2 },
+  filterCard: { paddingVertical: 15 },
+  filesCard: { paddingBottom: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 14 },
-  folderCard: {
-    width: 200,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.gray50,
-    padding: 16,
-    gap: 6,
-  },
-  folderIcon: { fontSize: 30 },
-  folderName: { fontSize: 15.5, fontWeight: '800', color: C.text, marginTop: 4 },
-  folderMeta: { fontSize: 12.5, color: C.primary, fontWeight: '600' },
-  folderDate: { fontSize: 11.5, color: C.textSecondary },
-  deleteBtn: { alignSelf: 'flex-start', marginTop: 6 },
-  deleteBtnText: { color: C.red, fontWeight: '700', fontSize: 12 },
+  folderCard: { width: 218, borderRadius: 15, borderWidth: 1, borderColor: C.border, backgroundColor: C.gray50, padding: 12, gap: 9 },
+  folderOpen: { gap: 6 },
+  folderIcon: { width: 35, height: 35, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: C.primaryLight },
+  folderIconText: { color: C.primaryDark, fontWeight: '900', fontSize: 16 },
+  folderName: { fontSize: 14.5, fontWeight: '900', color: C.text, marginTop: 2 },
+  folderMeta: { fontSize: 11.5, color: C.primaryDark, fontWeight: '800' },
+  folderDate: { fontSize: 11, color: C.textSecondary },
+  folderActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 2, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 8 },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });

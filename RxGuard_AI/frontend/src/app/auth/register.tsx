@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth, Role } from '@/context/auth';
-import { Button, Card, C, Input } from '@/components/ui';
+import { Alert, Button, Card, C, Input } from '@/components/ui';
 import { storage, KEYS } from '@/lib/storage';
 
 // Well-known hospitals/clinics for the doctor registration autocomplete
@@ -46,6 +46,8 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showClinicSuggestions, setShowClinicSuggestions] = useState(false);
+  const { width } = useWindowDimensions();
+  const isMobile = width < 620;
 
   const clinicSuggestions = useMemo(() => {
     if (!clinicName.trim()) return [];
@@ -103,40 +105,52 @@ export default function RegisterPage() {
   ];
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <Pressable onPress={() => router.back()} style={styles.backLink}>
-        <Text style={styles.backText}>← Back to home</Text>
-      </Pressable>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <View style={styles.topBar}>
+        <Pressable accessibilityRole="link" accessibilityLabel="Return to home" onPress={() => router.back()} style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}><Text style={styles.backText}>← Back to home</Text></Pressable>
+        <View style={styles.brand}><View style={styles.brandMark}><Text style={styles.brandMarkText}>R</Text></View><Text style={styles.brandText}>RxGuard</Text></View>
+      </View>
 
-      <Card style={styles.card}>
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Join RxGuard AI — AI-Powered Medication Safety</Text>
+      <Card style={styles.card} elevated>
+        <Text style={styles.kicker}>CREATE YOUR WORKSPACE</Text>
+        <Text accessibilityRole="header" style={styles.title}>Get started with RxGuard</Text>
+        <Text style={styles.subtitle}>Choose your role, then enter the details needed to set up your account.</Text>
 
-        <View style={styles.roleRow}>
-          {roles.map((r) => (
-            <Pressable
-              key={r.key}
-              onPress={() => setRole(r.key)}
-              style={[styles.roleCard, role === r.key && styles.roleCardActive]}
-            >
-              <Text style={[styles.roleLabel, role === r.key && { color: C.primary }]}>{r.label}</Text>
-              <Text style={styles.roleHint}>{r.hint}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.roleSection}>
+          <Text style={styles.fieldTitle}>I am joining as a</Text>
+          <View style={[styles.roleRow, isMobile && styles.roleRowMobile]}>
+            {roles.map((r) => {
+              const selected = role === r.key;
+              return (
+                <Pressable
+                  key={r.key}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  onPress={() => setRole(r.key)}
+                  style={({ pressed }) => [styles.roleCard, selected && styles.roleCardActive, pressed && styles.pressed]}
+                >
+                  <View style={[styles.roleIndicator, selected && styles.roleIndicatorActive]}>{selected ? <View style={styles.roleIndicatorDot} /> : null}</View>
+                  <Text style={[styles.roleLabel, selected && styles.roleLabelActive]}>{r.label}</Text>
+                  <Text style={styles.roleHint}>{r.hint}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
-        <View style={{ gap: 13, marginTop: 16 }}>
-          <Input label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Your full name" autoCapitalize="words" />
-          <Input label="CNIC" value={cnic} onChangeText={setCnic} placeholder="XXXXX-XXXXXXX-X" keyboardType="phone-pad" />
-          <Input label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" />
-          <Input label="Phone (optional)" value={phone} onChangeText={setPhone} placeholder="+92 3XX XXXXXXX" keyboardType="phone-pad" />
+        <View style={styles.form}>
+          <Input label="Full name" value={fullName} onChangeText={setFullName} placeholder="Your full name" autoCapitalize="words" />
+          <Input label="CNIC" hint="Format: XXXXX-XXXXXXX-X" value={cnic} onChangeText={setCnic} placeholder="XXXXX-XXXXXXX-X" keyboardType="phone-pad" />
+          <Input label="Email address" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" />
+          <Input label="Phone number (optional)" value={phone} onChangeText={setPhone} placeholder="+92 3XX XXXXXXX" keyboardType="phone-pad" />
 
           {role === 'doctor' ? (
-            <>
-              <Input label="Medical License Number" value={licenseNumber} onChangeText={setLicenseNumber} placeholder="PMDC-XXXX-XXXXX" />
+            <View style={styles.doctorFields}>
+              <View style={styles.doctorNotice}><Text style={styles.doctorNoticeTitle}>Doctor verification details</Text><Text style={styles.doctorNoticeText}>Doctor accounts require administrator approval before prescribing is available.</Text></View>
+              <Input label="Medical license number" value={licenseNumber} onChangeText={setLicenseNumber} placeholder="PMDC-XXXX-XXXXX" />
               <View>
                 <Input
-                  label="Clinic / Hospital Name"
+                  label="Clinic or hospital name"
                   value={clinicName}
                   onChangeText={(t) => {
                     setClinicName(t);
@@ -146,37 +160,28 @@ export default function RegisterPage() {
                   autoCapitalize="words"
                 />
                 {showClinicSuggestions && clinicSuggestions.length > 0 ? (
-                  <ScrollView style={styles.suggestBox} contentContainerStyle={{ paddingVertical: 4 }} showsVerticalScrollIndicator={false}>
+                  <ScrollView style={styles.suggestBox} contentContainerStyle={{ paddingVertical: 4 }} showsVerticalScrollIndicator={false} nestedScrollEnabled>
                     {clinicSuggestions.map((s) => (
-                      <Pressable
-                        key={s}
-                        style={styles.suggestItem}
-                        onPress={() => {
-                          setClinicName(s);
-                          setShowClinicSuggestions(false);
-                        }}
-                      >
+                      <Pressable key={s} style={({ pressed }) => [styles.suggestItem, pressed && styles.suggestItemPressed]} onPress={() => { setClinicName(s); setShowClinicSuggestions(false); }}>
                         <Text style={styles.suggestText}>{s}</Text>
                       </Pressable>
                     ))}
                   </ScrollView>
                 ) : null}
               </View>
-            </>
+            </View>
           ) : null}
 
-          <Input label="Password" value={password} onChangeText={setPassword} placeholder="At least 8 characters, mixed case + number" secureTextEntry />
-          <Input label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repeat your password" secureTextEntry />
+          <Input label="Password" hint="At least 8 characters with uppercase, lowercase, and a number." value={password} onChangeText={setPassword} placeholder="Create a secure password" secureTextEntry />
+          <Input label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repeat your password" secureTextEntry />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {success ? <Text style={styles.success}>{success}</Text> : null}
+          {error ? <Alert tone="error" title="Check your details" message={error} /> : null}
+          {success ? <Alert tone="success" message={success} /> : null}
 
-          <Button title={busy ? 'Creating account...' : 'Create Account'} onPress={submit} loading={busy} />
+          <Button title="Create account" onPress={submit} loading={busy} size="lg" accessibilityLabel="Create RxGuard account" />
 
-          <Pressable onPress={() => router.push('/auth/login' as any)} style={styles.switchRow}>
-            <Text style={styles.switchText}>
-              Already have an account? <Text style={styles.switchLink}>Login</Text>
-            </Text>
+          <Pressable accessibilityRole="link" onPress={() => router.push('/auth/login' as any)} style={({ pressed }) => [styles.switchRow, pressed && styles.pressed]}>
+            <Text style={styles.switchText}>Already have an account? <Text style={styles.switchLink}>Log in</Text></Text>
           </Pressable>
         </View>
       </Card>
@@ -186,44 +191,41 @@ export default function RegisterPage() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.aliceBlue },
-  content: { alignItems: 'center', padding: 20, paddingTop: 60 },
-  backLink: { position: 'absolute', top: 30, left: 24 },
-  backText: { color: C.primary, fontWeight: '600', fontSize: 14 },
-  card: { width: '100%', maxWidth: 560, padding: 28 },
-  title: { fontSize: 26, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 4 },
-  roleRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  roleCard: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: C.border,
-    padding: 12,
-    gap: 4,
-    backgroundColor: C.white,
-  },
-  roleCardActive: { borderColor: C.primary, backgroundColor: C.aliceBlue },
-  roleLabel: { fontWeight: '800', fontSize: 15, color: C.text },
-  roleHint: { fontSize: 10.5, color: C.textSecondary, lineHeight: 14 },
-  suggestBox: {
-    backgroundColor: C.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginTop: 6,
-    maxHeight: 260,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
-  },
+  content: { width: '100%', alignItems: 'center', paddingHorizontal: 20, paddingTop: 22, paddingBottom: 50 },
+  topBar: { width: '100%', maxWidth: 680, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  backLink: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 3 },
+  backText: { color: C.primaryDark, fontWeight: '800', fontSize: 13 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brandMark: { height: 31, width: 31, borderRadius: 10, backgroundColor: C.navy, alignItems: 'center', justifyContent: 'center' },
+  brandMarkText: { color: C.white, fontSize: 14, fontWeight: '900' },
+  brandText: { color: C.navy, fontSize: 16, fontWeight: '900' },
+  card: { width: '100%', maxWidth: 680, padding: 30 },
+  kicker: { color: C.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1.15 },
+  title: { fontSize: 28, fontWeight: '900', color: C.navy, letterSpacing: -0.55, marginTop: 5 },
+  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 6, lineHeight: 20, maxWidth: 560 },
+  roleSection: { marginTop: 23, gap: 9 },
+  fieldTitle: { color: C.text, fontSize: 13, fontWeight: '800' },
+  roleRow: { flexDirection: 'row', gap: 10 },
+  roleRowMobile: { flexWrap: 'wrap' },
+  roleCard: { flex: 1, minWidth: 150, position: 'relative', borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 13, gap: 5, backgroundColor: C.gray50 },
+  roleCardActive: { borderColor: C.primary, backgroundColor: C.primaryLight },
+  roleIndicator: { position: 'absolute', top: 11, right: 11, width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: C.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  roleIndicatorActive: { borderColor: C.primary, backgroundColor: C.white },
+  roleIndicatorDot: { height: 8, width: 8, borderRadius: 4, backgroundColor: C.primary },
+  roleLabel: { fontWeight: '900', fontSize: 14.5, color: C.navy },
+  roleLabelActive: { color: C.primaryDark },
+  roleHint: { fontSize: 10.5, color: C.textSecondary, lineHeight: 15, paddingRight: 4 },
+  form: { gap: 14, marginTop: 22 },
+  doctorFields: { gap: 14 },
+  doctorNotice: { padding: 12, borderRadius: 12, backgroundColor: C.amberBg, borderWidth: 1, borderColor: '#F2D5A5' },
+  doctorNoticeTitle: { color: C.amber, fontWeight: '900', fontSize: 12.5 },
+  doctorNoticeText: { color: '#815210', fontSize: 12, lineHeight: 17, marginTop: 3 },
+  suggestBox: { backgroundColor: C.white, borderRadius: 12, borderWidth: 1, borderColor: C.border, marginTop: 6, maxHeight: 230, overflow: 'hidden' },
   suggestItem: { paddingVertical: 11, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: C.gray100 },
-  suggestText: { fontSize: 14, color: C.text },
-  error: { color: C.red, fontSize: 13.5, backgroundColor: C.redBg, padding: 10, borderRadius: 10 },
-  success: { color: C.green, fontSize: 13.5, backgroundColor: C.greenBg, padding: 10, borderRadius: 10 },
-  switchRow: { alignItems: 'center', paddingVertical: 6 },
-  switchText: { fontSize: 14, color: C.textSecondary },
-  switchLink: { color: C.primary, fontWeight: '700' },
+  suggestItemPressed: { backgroundColor: C.primaryLight },
+  suggestText: { fontSize: 13.5, color: C.text, fontWeight: '600' },
+  switchRow: { alignItems: 'center', paddingVertical: 5 },
+  switchText: { fontSize: 13, color: C.textSecondary },
+  switchLink: { color: C.primaryDark, fontWeight: '800' },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
 });

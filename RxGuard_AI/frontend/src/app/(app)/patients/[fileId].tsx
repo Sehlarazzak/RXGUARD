@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/lib/api';
-import { Badge, Card, C, EmptyState, PageShell, SectionTitle, Spinner, useConfirm } from '@/components/ui';
+import { Alert, Badge, Button, Card, C, EmptyState, LoadingPanel, PageHeader, PageShell, SectionTitle, useConfirm } from '@/components/ui';
 
 interface FolderPrescription {
   dp_id: string;
@@ -58,43 +58,28 @@ export default function PatientFolderPage() {
   };
 
   if (!prescriptions) {
-    return <View style={{ flex: 1, justifyContent: 'center' }}><Spinner label="Loading patient folder..." /></View>;
+    return <PageShell><LoadingPanel label="Loading patient file…" /></PageShell>;
   }
 
   return (
     <PageShell>
       {dialog}
-      <Pressable style={styles.backBtn} onPress={() => router.push('/patients' as any)}>
+      <Pressable accessibilityRole="link" style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} onPress={() => router.push('/patients' as any)}>
         <Text style={styles.backText}>← All patient files</Text>
       </Pressable>
 
-      {error ? <Card><Text style={{ color: C.red }}>{error}</Text></Card> : null}
+      {error ? <Alert tone="error" title="Unable to update this patient file" message={error} /> : null}
 
       <View style={styles.header}>
-        <Text style={styles.folderIcon}>🗂️</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{folder?.patient_name || 'Patient'}</Text>
-          <Text style={styles.subtitle}>
-            {prescriptions.length} prescription{prescriptions.length === 1 ? '' : 's'} · folder created{' '}
-            {folder ? new Date(folder.created_at).toLocaleDateString() : ''}
-          </Text>
-        </View>
-        <Pressable
-          style={styles.newBtn}
-          onPress={() => router.push({ pathname: '/prescribe', params: { fileId: fileId as string } } as any)}
-        >
-          <Text style={styles.newBtnText}>+ New prescription</Text>
-        </Pressable>
+        <View style={styles.folderIcon}><Text style={styles.folderIconText}>▤</Text></View>
+        <PageHeader eyebrow="Patient file" title={folder?.patient_name || 'Patient'} subtitle={`${prescriptions.length} prescription${prescriptions.length === 1 ? '' : 's'} · folder created ${folder ? new Date(folder.created_at).toLocaleDateString() : ''}`} actions={<Button title="New prescription" onPress={() => router.push({ pathname: '/prescribe', params: { fileId: fileId as string } } as any)} />} />
       </View>
 
-      <Card>
-        <SectionTitle>Prescriptions</SectionTitle>
+      <Card style={styles.prescriptionCard}>
+        <SectionTitle subtitle="Open a saved prescription to view or continue it in the notepad.">Prescriptions</SectionTitle>
         {prescriptions.length === 0 ? (
           <View style={{ marginTop: 10 }}>
-            <EmptyState
-              title="No prescriptions in this folder."
-              subtitle="Create one from the Prescribe New Patient page."
-            />
+            <EmptyState title="No prescriptions in this patient file." subtitle="Create one from the prescribing workspace." action={<Button title="New prescription" size="sm" onPress={() => router.push({ pathname: '/prescribe', params: { fileId: fileId as string } } as any)} />} />
           </View>
         ) : (
           <ScrollView style={{ marginTop: 12, maxHeight: rxMaxHeight }} contentContainerStyle={{ gap: 10 }} showsVerticalScrollIndicator={false}>
@@ -102,10 +87,7 @@ export default function PatientFolderPage() {
               const open = expanded === p.dp_id;
               return (
                 <View key={p.dp_id} style={styles.rxCard}>
-                  <Pressable
-                    style={styles.rxHeader}
-                    onPress={() => setExpanded(open ? null : p.dp_id)}
-                  >
+                  <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} style={({ pressed }) => [styles.rxHeader, pressed && styles.pressed]} onPress={() => setExpanded(open ? null : p.dp_id)}>
                     <View style={{ flex: 1, gap: 4 }}>
                       <Text style={styles.rxTitle}>Prescription · {new Date(p.updated_at).toLocaleDateString()}</Text>
                       <Text style={styles.rxMeta}>
@@ -119,21 +101,9 @@ export default function PatientFolderPage() {
                   {open ? (
                     <View style={styles.rxBody}>
                       <Text style={styles.rxContent}>{p.content}</Text>
-                      <View style={[styles.rxActions, isMobile && { flexDirection: 'column' }]}>
-                        <Pressable
-                          style={styles.editBtn}
-                          onPress={() =>
-                            router.push({
-                              pathname: '/prescribe',
-                              params: { fileId: fileId as string, dpId: p.dp_id },
-                            } as any)
-                          }
-                        >
-                          <Text style={styles.editBtnText}>Open in notepad</Text>
-                        </Pressable>
-                        <Pressable style={styles.delBtn} onPress={() => deletePrescription(p)}>
-                          <Text style={styles.delBtnText}>Delete</Text>
-                        </Pressable>
+                      <View style={[styles.rxActions, isMobile && styles.rxActionsMobile]}>
+                        <Button title="Open in notepad" variant="secondary" onPress={() => router.push({ pathname: '/prescribe', params: { fileId: fileId as string, dpId: p.dp_id } } as any)} />
+                        <Button title="Delete" variant="danger" onPress={() => deletePrescription(p)} />
                       </View>
                     </View>
                   ) : null}
@@ -148,57 +118,20 @@ export default function PatientFolderPage() {
 }
 
 const styles = StyleSheet.create({
-  backBtn: { alignSelf: 'flex-start', paddingVertical: 6 },
-  backText: { color: C.primary, fontWeight: '700', fontSize: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
-  folderIcon: { fontSize: 34 },
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 13.5, color: C.textSecondary, marginTop: 2 },
-  newBtn: {
-    backgroundColor: C.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  newBtnText: { color: C.white, fontWeight: '700', fontSize: 13.5 },
-  rxCard: {
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 12,
-    backgroundColor: C.gray50,
-    overflow: 'hidden',
-  },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 4 },
+  backText: { color: C.primaryDark, fontWeight: '800', fontSize: 13 },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  folderIcon: { width: 39, height: 39, borderRadius: 12, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
+  folderIconText: { color: C.primaryDark, fontSize: 18, fontWeight: '900' },
+  prescriptionCard: { paddingBottom: 16 },
+  rxCard: { borderWidth: 1, borderColor: C.border, borderRadius: 13, backgroundColor: C.gray50, overflow: 'hidden' },
   rxHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
-  rxTitle: { fontSize: 15, fontWeight: '700', color: C.text },
-  rxMeta: { fontSize: 12, color: C.textSecondary },
-  chevron: { fontSize: 14, color: C.textSecondary },
+  rxTitle: { fontSize: 14, fontWeight: '900', color: C.text },
+  rxMeta: { fontSize: 11.5, color: C.textSecondary },
+  chevron: { fontSize: 14, color: C.textSecondary, fontWeight: '800' },
   rxBody: { borderTopWidth: 1, borderTopColor: C.border, padding: 14, gap: 12 },
-  rxContent: {
-    fontFamily: 'Georgia, serif',
-    fontSize: 14.5,
-    lineHeight: 24,
-    color: C.text,
-    backgroundColor: C.white,
-    padding: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
+  rxContent: { fontFamily: 'Georgia, serif', fontSize: 14, lineHeight: 23, color: C.text, backgroundColor: C.white, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: C.border },
   rxActions: { flexDirection: 'row', gap: 10 },
-  editBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 9,
-    backgroundColor: C.primary,
-  },
-  editBtnText: { color: C.white, fontWeight: '700', fontSize: 12.5 },
-  delBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: C.red,
-    backgroundColor: C.white,
-  },
-  delBtnText: { color: C.red, fontWeight: '700', fontSize: 12.5 },
+  rxActionsMobile: { flexDirection: 'column' },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });

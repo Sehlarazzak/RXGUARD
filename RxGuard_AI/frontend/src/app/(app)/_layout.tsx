@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useAuth, authFlags } from '@/context/auth';
 import { NavBar } from '@/components/nav-bar';
 import { Spinner, C } from '@/components/ui';
+import { StatusBar } from 'expo-status-bar';
 
 export default function AppLayout() {
   const { user, loading } = useAuth();
@@ -32,10 +33,12 @@ export default function AppLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.aliceBlue }}>
+      <StatusBar style="dark" />
       <NavBar />
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: 'fade',
           contentStyle: { backgroundColor: C.aliceBlue },
         }}
       >

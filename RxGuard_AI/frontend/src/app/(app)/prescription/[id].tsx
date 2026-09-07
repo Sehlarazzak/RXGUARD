@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, imageUrl } from '@/lib/api';
-import { Badge, Card, C, EmptyState, Spinner } from '@/components/ui';
+import { Badge, Button, Card, C, EmptyState, LoadingPanel, PageHeader, PageShell, SectionTitle } from '@/components/ui';
 
 export default function PrescriptionDetailPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -10,8 +10,6 @@ export default function PrescriptionDetailPage() {
   const [prescription, setPrescription] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [imgFailed, setImgFailed] = useState(false);
-  const { width } = useWindowDimensions();
-  const isMobile = width < 860;
 
   useEffect(() => {
     if (!id) return;
@@ -21,39 +19,22 @@ export default function PrescriptionDetailPage() {
   }, [id]);
 
   if (error) {
-    return (
-      <View style={styles.page}>
-        <Card style={{ margin: 20, marginTop: 60 }}>
-          <EmptyState title="Prescription not found" subtitle={error} />
-          <Pressable style={styles.backBtn} onPress={() => router.push('/prescriptions' as any)}>
-            <Text style={styles.backText}>← Back to My Prescriptions</Text>
-          </Pressable>
-        </Card>
-      </View>
-    );
+    return <PageShell><EmptyState title="Prescription record unavailable" subtitle={error} action={<Button title="Back to records" variant="secondary" onPress={() => router.push('/prescriptions' as any)} />} /></PageShell>;
   }
   if (!prescription) {
-    return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: C.aliceBlue }}><Spinner label="Loading prescription..." /></View>;
+    return <PageShell><LoadingPanel label="Loading your prescription record…" /></PageShell>;
   }
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <Pressable style={styles.backBtn} onPress={() => router.push('/prescriptions' as any)}>
-        <Text style={styles.backText}>← Back to My Prescriptions</Text>
+    <PageShell>
+      <Pressable accessibilityRole="link" style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} onPress={() => router.push('/prescriptions' as any)}>
+        <Text style={styles.backText}>← Back to prescription records</Text>
       </Pressable>
 
-      <Card>
-        <View style={[styles.headerRow, isMobile && { flexDirection: 'column', alignItems: 'flex-start' }]}>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={styles.title}>{prescription.title}</Text>
-            <Text style={styles.date}>Created {new Date(prescription.created_at).toLocaleString()}</Text>
-            <Badge status={prescription.status} />
-          </View>
-        </View>
-      </Card>
+      <PageHeader eyebrow="Personal prescription record" title={prescription.title} subtitle={`Created ${new Date(prescription.created_at).toLocaleString()}`} actions={<Badge status={prescription.status} />} />
 
       <Card>
-        <Text style={styles.sectionTitle}>Prescription Image</Text>
+        <SectionTitle subtitle="The uploaded image is stored for viewing only and is not converted into text.">Prescription image</SectionTitle>
         <View style={{ marginTop: 12 }}>
           {prescription.file_name && !imgFailed ? (
             <img
@@ -75,13 +56,13 @@ export default function PrescriptionDetailPage() {
 
       {prescription.details ? (
         <Card>
-          <Text style={styles.sectionTitle}>Details</Text>
+          <SectionTitle>Notes</SectionTitle>
           <Text style={styles.detailsText}>{prescription.details}</Text>
         </Card>
       ) : null}
 
       <Card>
-        <Text style={styles.sectionTitle}>Record Information</Text>
+        <SectionTitle subtitle="Basic metadata for this saved record.">Record information</SectionTitle>
         <View style={{ gap: 8, marginTop: 10 }}>
           <InfoRow label="File name" value={prescription.file_name || '—'} />
           <InfoRow label="Status" value={prescription.status} />
@@ -89,7 +70,7 @@ export default function PrescriptionDetailPage() {
           <InfoRow label="Last updated" value={new Date(prescription.updated_at).toLocaleString()} />
         </View>
       </Card>
-    </ScrollView>
+    </PageShell>
   );
 }
 
@@ -103,33 +84,14 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: C.aliceBlue },
-  content: { padding: 20, gap: 14, maxWidth: 900, width: '100%', alignSelf: 'center' as const, paddingBottom: 60 },
-  backBtn: { alignSelf: 'flex-start', paddingVertical: 6 },
-  backText: { color: C.primary, fontWeight: '700', fontSize: 14 },
-  headerRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  date: { fontSize: 13, color: C.textSecondary },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: C.text },
-  image: {
-    width: '100%',
-    minHeight: 300,
-    borderRadius: 14,
-    objectFit: 'contain' as any,
-    backgroundColor: C.gray50,
-  },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderWidth: 2,
-    borderColor: C.border,
-    borderStyle: 'dashed',
-    paddingVertical: 60,
-  },
-  placeholderIcon: { fontSize: 48, color: C.primary },
-  placeholderText: { fontSize: 14, color: C.textSecondary },
-  detailsText: { fontSize: 15, color: C.text, lineHeight: 23, marginTop: 8 },
-  infoLabel: { fontSize: 13, color: C.textSecondary },
-  infoValue: { fontSize: 13, color: C.text, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 4 },
+  backText: { color: C.primaryDark, fontWeight: '800', fontSize: 13 },
+  image: { width: '100%', minHeight: 320, borderRadius: 14, objectFit: 'contain' as any, backgroundColor: C.gray50 },
+  imagePlaceholder: { alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 2, borderColor: C.border, borderStyle: 'dashed', paddingVertical: 60 },
+  placeholderIcon: { fontSize: 45, color: C.primaryDark },
+  placeholderText: { fontSize: 13, color: C.textSecondary, textAlign: 'center' },
+  detailsText: { fontSize: 14, color: C.text, lineHeight: 22, marginTop: 10 },
+  infoLabel: { fontSize: 12, color: C.textSecondary },
+  infoValue: { fontSize: 12, color: C.text, fontWeight: '700', flexShrink: 1, textAlign: 'right' },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });

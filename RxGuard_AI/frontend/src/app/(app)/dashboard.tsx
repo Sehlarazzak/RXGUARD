@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { api } from '@/lib/api';
-import { BarChart, Badge, Card, C, EmptyState, PageShell, SectionTitle, Spinner } from '@/components/ui';
+import { Alert, BarChart, Badge, Button, Card, C, EmptyState, LoadingPanel, PageHeader, PageShell, SectionTitle } from '@/components/ui';
 
 interface DashboardData {
   role: string;
@@ -37,12 +37,13 @@ export default function DashboardPage() {
   if (error) {
     return (
       <PageShell>
-        <Card><Text style={{ color: C.red }}>{error}</Text></Card>
+        <PageHeader eyebrow="Workspace overview" title="Your RxGuard dashboard" subtitle="Your latest activity and role-specific shortcuts." />
+        <Alert tone="error" title="Dashboard unavailable" message={error} action={<Button title="Try again" size="sm" variant="secondary" onPress={load} />} />
       </PageShell>
     );
   }
   if (!data) {
-    return <View style={{ flex: 1, justifyContent: 'center' }}><Spinner label="Loading your dashboard..." /></View>;
+    return <PageShell><LoadingPanel label="Loading your dashboard…" /></PageShell>;
   }
 
   const role = user?.role;
@@ -71,80 +72,78 @@ export default function DashboardPage() {
 
   const greeting = user?.full_name ? `Welcome back, ${user.full_name}` : 'Welcome back';
 
+  const title = role === 'patient' ? 'Your medication records, at a glance.' : role === 'doctor' ? 'A clearer view of your prescribing workflow.' : 'Keep the RxGuard registry moving.';
+  const subtitle = role === 'patient'
+    ? 'Review saved prescription records and search medicine safety information.'
+    : role === 'doctor'
+    ? 'Manage patient files, review typed prescriptions, and search the registry.'
+    : 'Review registry activity, manage users, and follow up on approvals.';
+  const actions = role === 'doctor'
+    ? <><Button title="Find medicine" variant="secondary" onPress={() => router.push('/search' as any)} /><Button title="New prescription" onPress={() => router.push('/prescribe' as any)} /></>
+    : role === 'patient'
+    ? <><Button title="My records" variant="secondary" onPress={() => router.push('/prescriptions' as any)} /><Button title="Find medicine" onPress={() => router.push('/search' as any)} /></>
+    : <><Button title="Manage users" variant="secondary" onPress={() => router.push('/admin/users' as any)} /><Button title="Open registry" onPress={() => router.push('/admin' as any)} /></>;
+
+  const quickActions = role === 'patient'
+    ? [{ glyph: '⌕', title: 'Search the registry', body: 'Look up a medicine, ingredient, batch, or manufacturer.', href: '/search' }, { glyph: '▤', title: 'Save a record', body: 'Keep an uploaded prescription record available when you need it.', href: '/prescriptions' }]
+    : role === 'doctor'
+    ? [{ glyph: '✎', title: 'Start prescribing', body: 'Create or select a patient file and review typed medicines.', href: '/prescribe' }, { glyph: '▤', title: 'Open patient files', body: 'Review patients and their recorded prescriptions.', href: '/patients' }]
+    : [{ glyph: '▦', title: 'Review registry', body: 'Search and maintain medicine records and safety data.', href: '/admin' }, { glyph: '✓', title: 'Review approvals', body: 'Follow up on doctor account approvals.', href: '/admin/approvals' }];
+
   return (
     <PageShell>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.title}>{greeting}</Text>
-          <Text style={styles.subtitle}>
-            {role === 'patient'
-              ? 'Your prescription records and medicine safety overview'
-              : role === 'doctor'
-              ? 'Your prescribing overview and patient files'
-              : 'Your activity overview'}
-          </Text>
-        </View>
-        {role === 'doctor' ? (
-          <Pressable style={styles.newRxBtn} onPress={() => router.push('/prescribe' as any)}>
-            <Text style={styles.newRxText}>+ Prescribe New Patient</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      <PageHeader eyebrow={`${role || 'account'} workspace`} title={greeting} subtitle={title} actions={actions} />
 
       {role === 'doctor' && user?.approval_status !== 'approved' ? (
-        <Card style={{ backgroundColor: C.amberBg, borderColor: '#FDE68A' }}>
-          <Text style={{ color: C.amber, fontWeight: '700' }}>Your registration is pending administrator approval.</Text>
-          <Text style={{ color: C.amber, fontSize: 13, marginTop: 4 }}>
-            You can browse and search medicines, but prescribing will unlock once an admin approves your license.
-          </Text>
-        </Card>
+        <Alert tone="warning" title="Prescription access is pending" message="You can browse and search medicines now. Prescribing becomes available once an administrator approves your license." />
       ) : null}
 
-      <View style={[styles.statsRow, isMobile && { flexDirection: 'column' }]}>
+      <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
         {statCards.map((s, i) => (
-          <Card key={i} style={styles.statCard}>
+          <Card key={i} style={styles.statCard} elevated>
+            <View style={[styles.statIcon, i === 1 && styles.statIconAlt, i === 2 && styles.statIconSoft]}><Text style={styles.statIconText}>{i === 0 ? '◷' : i === 1 ? '▤' : '⌁'}</Text></View>
             <Text style={styles.statValue}>{s.value === null ? 'Admin' : s.value}</Text>
             <Text style={styles.statLabel}>{s.label}</Text>
           </Card>
         ))}
       </View>
 
+      <View style={styles.workspaceIntro}><SectionTitle subtitle={subtitle}>Continue where you left off</SectionTitle></View>
+      <View style={[styles.quickGrid, isMobile && styles.quickGridMobile]}>
+        {quickActions.map((item) => <QuickAction key={item.href} {...item} onPress={() => router.push(item.href as any)} />)}
+      </View>
+
       {role === 'admin' ? <AdminCharts /> : null}
 
-      <Card>
-        <SectionTitle>
-          {role === 'patient' ? 'Recent Prescriptions' : role === 'doctor' ? 'Recent Patient Files' : 'Recent Searches'}
-        </SectionTitle>
-        <ScrollView style={{ marginTop: 12, maxHeight: recentMaxHeight }} contentContainerStyle={{ gap: 10 }} showsVerticalScrollIndicator={false}>
+      <Card style={styles.recentCard}>
+        <SectionTitle subtitle="Select an item to continue in its relevant workspace.">{role === 'patient' ? 'Recent prescription records' : role === 'doctor' ? 'Recent patient files' : 'Recent searches'}</SectionTitle>
+        <ScrollView style={{ marginTop: 14, maxHeight: recentMaxHeight }} contentContainerStyle={{ gap: 9 }} showsVerticalScrollIndicator={false}>
           {data.recent.length === 0 ? (
             <EmptyState
-              title={
-                role === 'patient'
-                  ? 'No prescriptions yet. Save your first prescription to see it here.'
-                  : role === 'doctor'
-                  ? 'No patient files yet. Start prescribing to build your records.'
-                  : 'No searches yet. Use the search bar to look up medicines.'
-              }
+              title={role === 'patient' ? 'No prescription records yet.' : role === 'doctor' ? 'No patient files yet.' : 'No searches yet.'}
+              subtitle={role === 'patient' ? 'Save a prescription record to keep it available here.' : role === 'doctor' ? 'Start a prescription to create your first patient file.' : 'Search the medicine registry to see activity here.'}
+              action={<Button title={role === 'doctor' ? 'Start prescribing' : 'Search medicines'} size="sm" onPress={() => router.push((role === 'doctor' ? '/prescribe' : '/search') as any)} />}
             />
           ) : (
             data.recent.map((r: any) => (
               <Pressable
                 key={r.prescription_id || r.file_id || r.search_id}
-                style={styles.recentItem}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${r.title || r.patient_name || r.query}`}
+                style={({ pressed }) => [styles.recentItem, pressed && styles.pressed]}
                 onPress={() => {
                   if (role === 'patient') router.push(`/prescription/${r.prescription_id}` as any);
                   else if (role === 'doctor') router.push(`/patients/${r.file_id}` as any);
                   else router.push('/search' as any);
                 }}
               >
+                <View style={styles.recentAvatar}><Text style={styles.recentAvatarText}>{(r.title || r.patient_name || r.query || 'R').slice(0, 1).toUpperCase()}</Text></View>
                 <View style={{ flex: 1, gap: 3 }}>
-                  <Text style={styles.recentTitle} numberOfLines={1}>
-                    {r.title || r.patient_name || r.query}
-                  </Text>
+                  <Text style={styles.recentTitle} numberOfLines={1}>{r.title || r.patient_name || r.query}</Text>
                   <Text style={styles.recentDate}>{new Date(r.created_at || r.last_updated).toLocaleString()}</Text>
                 </View>
                 {r.status ? <Badge status={r.status} small /> : null}
-                <Text style={{ color: C.primary, fontWeight: '700' }}>View →</Text>
+                <Text style={styles.viewText}>View →</Text>
               </Pressable>
             ))
           )}
@@ -152,6 +151,10 @@ export default function DashboardPage() {
       </Card>
     </PageShell>
   );
+}
+
+function QuickAction({ glyph, title, body, onPress }: { glyph: string; title: string; body: string; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]} onPress={onPress}><View style={styles.quickIcon}><Text style={styles.quickIconText}>{glyph}</Text></View><View style={{ flex: 1, gap: 3 }}><Text style={styles.quickTitle}>{title}</Text><Text style={styles.quickBody}>{body}</Text></View><Text style={styles.quickArrow}>→</Text></Pressable>;
 }
 
 function AdminCharts() {
@@ -171,31 +174,31 @@ function AdminCharts() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
-  title: { fontSize: 24, fontWeight: '800', color: C.text },
-  subtitle: { fontSize: 14, color: C.textSecondary, marginTop: 2 },
-  newRxBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-  },
-  newRxText: { color: C.white, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: 14 },
-  statCard: { flex: 1, alignItems: 'center', paddingVertical: 22 },
-  statValue: { fontSize: 34, fontWeight: '800', color: C.primary },
-  statLabel: { fontSize: 13, color: C.textSecondary, marginTop: 4, textAlign: 'center' },
+  statsRowMobile: { flexDirection: 'column' },
+  statCard: { flex: 1, minHeight: 150, padding: 19, justifyContent: 'center', gap: 4 },
+  statIcon: { height: 29, width: 29, borderRadius: 10, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statIconAlt: { backgroundColor: C.greenBg },
+  statIconSoft: { backgroundColor: C.infoBg },
+  statIconText: { color: C.primaryDark, fontSize: 14, fontWeight: '900' },
+  statValue: { fontSize: 32, fontWeight: '900', color: C.navy, letterSpacing: -0.5 },
+  statLabel: { fontSize: 12.5, color: C.textSecondary, fontWeight: '700' },
+  workspaceIntro: { marginTop: 3 },
+  quickGrid: { flexDirection: 'row', gap: 14 },
+  quickGridMobile: { flexDirection: 'column' },
+  quickCard: { flex: 1, minHeight: 104, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: C.white, borderRadius: 16, borderWidth: 1, borderColor: C.border },
+  quickIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: C.gray100, alignItems: 'center', justifyContent: 'center' },
+  quickIconText: { color: C.primaryDark, fontSize: 17, fontWeight: '900' },
+  quickTitle: { color: C.navy, fontSize: 14, fontWeight: '900' },
+  quickBody: { color: C.textSecondary, fontSize: 11.5, lineHeight: 16 },
+  quickArrow: { color: C.primary, fontWeight: '900', fontSize: 17 },
   chartHint: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: C.gray50,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  recentTitle: { fontSize: 15, fontWeight: '700', color: C.text },
-  recentDate: { fontSize: 12, color: C.textSecondary },
+  recentCard: { paddingBottom: 16 },
+  recentItem: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 13, borderRadius: 13, backgroundColor: C.gray50, borderWidth: 1, borderColor: C.border },
+  recentAvatar: { width: 32, height: 32, borderRadius: 10, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  recentAvatarText: { color: C.primaryDark, fontSize: 13, fontWeight: '900' },
+  recentTitle: { fontSize: 14, fontWeight: '800', color: C.text },
+  recentDate: { fontSize: 11.5, color: C.textSecondary },
+  viewText: { color: C.primaryDark, fontWeight: '800', fontSize: 12 },
+  pressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
 });
