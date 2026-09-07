@@ -139,7 +139,7 @@ router.get('/medicines/:id', async (req, res) => {
     );
     if (!product) return res.status(404).json({ error: 'Medicine not found.' });
 
-    const [ingredients, batches, notices, sources, history, identifiers, events, storedAlts] = await Promise.all([
+    const [ingredients, batches, notices, sources, history, identifiers, events] = await Promise.all([
       q(`SELECT i.ingredient_id, i.name, pi.strength_value, pi.strength_unit, pi.composition_text
          FROM mediverify.product_ingredients pi JOIN mediverify.ingredients i ON i.ingredient_id = pi.ingredient_id
          WHERE pi.product_id = $1 ORDER BY i.name`, [id]),
@@ -163,18 +163,12 @@ router.get('/medicines/:id', async (req, res) => {
          FROM mediverify.admin_events a LEFT JOIN mediverify.users u ON u.user_id = a.user_id
          WHERE a.entity_id = $1 OR (a.details ->> 'brand_name') = $2
          ORDER BY a.created_at DESC LIMIT 50`, [id, product.brand_name]),
-      q(`SELECT pa.alternative_id, pa.relationship_type, pa.ingredient_match, pa.similarity_score,
-                pa.ai_generated, pa.rationale, alt.brand_name AS alternative_name, alt.product_id AS alternative_id_product,
-                alt.safety_status::text AS alternative_status
-         FROM mediverify.product_alternatives pa
-         JOIN mediverify.products alt ON alt.product_id = pa.alternative_product_id
-         WHERE pa.original_product_id = $1`, [id]),
     ]);
 
-    // AI-computed safe alternatives for comparison
+    // AI-powered safe alternatives
     const products = await loadProducts();
     const cached = products.find((p) => p.product_id === id);
-    const aiAlternatives = cached ? await findAlternatives(cached) : [];
+    const altResult = cached ? await findAlternatives(cached) : { alternatives: [], ai_powered: false, ai_reason: null, no_alternative: true };
 
     // Timeline: merged chronological regulatory events
     const timeline = [];
@@ -215,8 +209,9 @@ router.get('/medicines/:id', async (req, res) => {
         sources,
         status_history: history,
         identifiers,
-        stored_alternatives: storedAlts,
-        ai_alternatives: aiAlternatives,
+        alternatives: altResult.alternatives,
+        ai_powered: altResult.ai_powered,
+        ai_reason: altResult.ai_reason,
         timeline,
         completeness: { missing, complete: missing.length === 0, score: Math.round(((8 - missing.length) / 8) * 100) },
       },
@@ -458,7 +453,7 @@ router.post('/backups', async (req, res) => {
     const tables = [
       'mediverify.users', 'mediverify.products', 'mediverify.ingredients', 'mediverify.manufacturers',
       'mediverify.product_ingredients', 'mediverify.safety_notices', 'mediverify.recall_batches',
-      'mediverify.notice_products', 'mediverify.product_alternatives', 'mediverify.admin_events',
+      'mediverify.notice_products', 'mediverify.admin_events',
       'rxguard.prescriptions', 'rxguard.patient_files', 'rxguard.doctor_prescriptions',
       'rxguard.search_history', 'rxguard.retailers',
     ];

@@ -401,7 +401,11 @@ router.get('/:id', requireAuth, async (req, res) => {
     if (!isSafe) {
       const products = await loadProducts();
       const cached = products.find((p) => p.product_id === id);
-      fullProduct.alternatives = cached ? await findAlternatives(cached) : [];
+      const result = cached ? await findAlternatives(cached) : { alternatives: [], ai_powered: false, ai_reason: null, no_alternative: true };
+      fullProduct.alternatives = result.alternatives;
+      fullProduct.ai_powered = result.ai_powered;
+      fullProduct.ai_reason = result.ai_reason;
+      fullProduct.no_alternative = result.no_alternative;
     }
 
     res.json({ product: fullProduct });
@@ -411,14 +415,15 @@ router.get('/:id', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/medicines/:id/alternatives - safe alternatives with AI similarity
+// GET /api/medicines/:id/alternatives - safe alternatives with AI reasoning
 router.get('/:id/alternatives', requireAuth, async (req, res) => {
   try {
     const id = String(req.params.id);
     const products = await loadProducts();
     const product = products.find((p) => p.product_id === id);
     if (!product) return res.status(404).json({ error: 'Medicine not found.' });
-    res.json({ alternatives: await findAlternatives(product) });
+    const result = await findAlternatives(product);
+    res.json(result);
   } catch (err) {
     console.error('alternatives error', err);
     res.status(500).json({ error: 'Could not load alternatives.' });

@@ -606,31 +606,49 @@ function LearnMorePopup({
 
         {product.alternatives && product.alternatives.length > 0 ? (
           <View style={{ gap: 8 }}>
-            <Text style={styles.popupSection}>Safe Alternatives (AI similarity)</Text>
-            {product.alternatives.map((alt: any) => (
+            <Text style={styles.popupSection}>
+              {product.ai_powered ? 'Safe Alternatives (AI recommended)' : 'Safe Alternatives (algorithmic ranking)'}
+            </Text>
+            {product.ai_powered && product.ai_reason ? (
+              <View style={{ backgroundColor: '#EEF2FF', borderRadius: 8, padding: 10, marginBottom: 4 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#4338CA', marginBottom: 2 }}>AI Reasoning</Text>
+                <Text style={{ fontSize: 12, color: '#4338CA', lineHeight: 17 }}>{product.ai_reason}</Text>
+              </View>
+            ) : null}
+            {product.alternatives.map((alt: any, idx: number) => (
               <View key={alt.product_id} style={styles.altBox}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                  <Text style={styles.altName}>{alt.brand_name}</Text>
+                  <Text style={styles.altName}>
+                    {product.ai_powered && idx === 0 ? '\u2705 ' : ''}{alt.brand_name}
+                  </Text>
                   <View style={styles.scoreChip}>
                     <Text style={styles.scoreText}>{alt.similarity_score}% match</Text>
                   </View>
                 </View>
+                {alt.reason && idx === 0 ? (
+                  <Text style={{ fontSize: 12, color: C.textSecondary, lineHeight: 16, fontStyle: 'italic' }}>{alt.reason}</Text>
+                ) : null}
                 <Text style={styles.altGeneric}>Generic: {alt.generic_name}</Text>
-                {alt.similar_ingredients.length > 0 ? (
+                {alt.similar_ingredients && alt.similar_ingredients.length > 0 ? (
                   <Text style={styles.altShared}>Shared: {alt.similar_ingredients.join(', ')}</Text>
                 ) : (
                   <Text style={styles.altShared}>Similar therapeutic profile</Text>
                 )}
                 <Text style={styles.altMeta}>
-                  {alt.dosage_form || '—'} · {alt.manufacturer_name || 'Unknown'}
+                  {alt.dosage_form || '\u2014'} \u00b7 {alt.manufacturer_name || 'Unknown'}
                 </Text>
               </View>
             ))}
+            <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, padding: 10, marginTop: 4 }}>
+              <Text style={{ fontSize: 11.5, color: '#92400E', lineHeight: 16 }}>
+                Please confirm any medicine substitution with a qualified healthcare professional.
+              </Text>
+            </View>
           </View>
         ) : (
           <View>
             <Text style={styles.popupSection}>Safe Alternatives</Text>
-            <Text style={styles.noticeBody}>No close alternatives found in the database.</Text>
+            <Text style={styles.noticeBody}>No suitable safe alternative was found in the RxGuard database.</Text>
           </View>
         )}
       </ScrollView>

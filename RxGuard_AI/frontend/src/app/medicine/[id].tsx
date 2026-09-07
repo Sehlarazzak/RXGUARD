@@ -137,30 +137,50 @@ export default function MedicineDetailPage() {
       {!isSafe && user?.role !== 'patient' && product.alternatives && product.alternatives.length > 0 ? (
         <Card>
           <Text style={styles.sectionTitle}>Safe Alternatives</Text>
-          <Text style={styles.muted}>AI-ranked by ingredient similarity to {product.brand_name}</Text>
+          <Text style={styles.muted}>
+            {product.ai_powered
+              ? 'AI-recommended alternative from the RxGuard database'
+              : `Ranked by ingredient similarity to ${product.brand_name}`}
+          </Text>
+          {product.ai_powered && product.ai_reason ? (
+            <View style={{ backgroundColor: '#EEF2FF', borderRadius: 8, padding: 10, marginTop: 10 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#4338CA', marginBottom: 2 }}>AI Reasoning</Text>
+              <Text style={{ fontSize: 12, color: '#4338CA', lineHeight: 17 }}>{product.ai_reason}</Text>
+            </View>
+          ) : null}
           <View style={{ gap: 10, marginTop: 12 }}>
-            {product.alternatives.map((alt: any) => (
+            {product.alternatives.map((alt: any, idx: number) => (
               <Pressable
                 key={alt.product_id}
                 style={styles.altBox}
                 onPress={() => router.push(`/medicine/${alt.product_id}` as any)}
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                  <Text style={styles.altName}>{alt.brand_name}</Text>
+                  <Text style={styles.altName}>
+                    {product.ai_powered && idx === 0 ? '\u2705 ' : ''}{alt.brand_name}
+                  </Text>
                   <View style={styles.scoreChip}>
                     <Text style={styles.scoreText}>{alt.similarity_score}% match</Text>
                   </View>
                 </View>
+                {alt.reason && idx === 0 ? (
+                  <Text style={{ fontSize: 12, color: C.textSecondary, lineHeight: 16, fontStyle: 'italic' }}>{alt.reason}</Text>
+                ) : null}
                 <Text style={styles.altGeneric}>Generic: {alt.generic_name}</Text>
-                {alt.similar_ingredients.length > 0 ? (
+                {alt.similar_ingredients && alt.similar_ingredients.length > 0 ? (
                   <Text style={styles.altShared}>Shared ingredients: {alt.similar_ingredients.join(', ')}</Text>
                 ) : null}
                 <Text style={styles.altMeta}>
-                  {alt.dosage_form || '—'} · {alt.manufacturer_name || 'Unknown'}
-                  {alt.registration_number ? ` · Reg #${alt.registration_number}` : ''}
+                  {alt.dosage_form || '\u2014'} \u00b7 {alt.manufacturer_name || 'Unknown'}
+                  {alt.registration_number ? ` \u00b7 Reg #${alt.registration_number}` : ''}
                 </Text>
               </Pressable>
             ))}
+          </View>
+          <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, padding: 10, marginTop: 8 }}>
+            <Text style={{ fontSize: 11.5, color: '#92400E', lineHeight: 16 }}>
+              Please confirm any medicine substitution with a qualified healthcare professional.
+            </Text>
           </View>
         </Card>
       ) : null}

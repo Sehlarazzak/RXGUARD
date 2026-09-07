@@ -12,6 +12,7 @@ RxGuard AI is a medication-safety and information platform that helps patients a
 - Every medicine record shows its source, verification date, and data status.
 - AI-assisted explanations of complex medicine notices in simple language, with the official source kept visible.
 - Hybrid AI semantic medicine search: search by natural language intent ("medicine for fever and headache") while keeping exact/keyword search intact.
+- AI-powered alternative medicine recommendations: when a medicine is unsafe, the system retrieves safe candidates from the database, sends them to Gemini AI for reasoning, validates the AI selection against the database, and displays only verified medicine records. Falls back to algorithmic ranking when the Gemini API key is not configured.
 - The system flags information that is missing, conflicting, or outdated.
 
 ## Tech Stack
@@ -115,6 +116,16 @@ Database initialisation complete.
 ```
 
 The backend also generates 384-dimensional embeddings for every medicine on first start (and whenever new medicines are added). The model (`Xenova/all-MiniLM-L6-v2`) is downloaded automatically from Hugging Face and cached locally, so no external AI API key is required. This may take a minute on the very first run.
+
+#### (Optional) Gemini API key for AI-powered alternatives
+
+To enable AI reasoning for alternative medicine recommendations, get a free API key from [Google AI Studio](https://aistudio.google.com/apikey) and add it to your `.env`:
+
+```
+GEMINI_API_KEY=your_key_here
+```
+
+Without this key the application works normally — it falls back to algorithmic ingredient-similarity ranking for alternatives.
 
 ### 4. Set up the frontend
 

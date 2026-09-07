@@ -1,10 +1,11 @@
 ﻿// RxGuard AI analysis engine.
 // Parses free-text prescriptions, fuzzy-matches medicine names against the
 // mediverify drug database, classifies safety status and computes safe
-// alternatives scored by ingredient overlap, name similarity and dosage-form
-// match. This is real data-driven analysis on top of the DRAP dataset.
+// alternatives via an AI-powered pipeline (Gemini reasoning + database
+// validation) with algorithmic fallback.
 
 const { q } = require('../db');
+const { getAiAlternative } = require('./aiAlternative');
 
 const SAFE_STATUSES = ['active'];
 
@@ -168,10 +169,12 @@ async function analyzePrescription(text) {
 }
 
 // ---------------------------------------------------------------------------
-// Alternatives: safe products ranked by ingredient overlap, name similarity
-// and dosage-form equivalence. Score is a 0-100 AI similarity score.
+// Alternatives: AI-powered pipeline with algorithmic fallback.
 // ---------------------------------------------------------------------------
-async function findAlternatives(product) {
+
+// Algorithmic fallback: safe products ranked by ingredient overlap, name
+// similarity and dosage-form equivalence. Used when Gemini is unavailable.
+async function _algorithmicAlternatives(product) {
   const products = await loadProducts();
   const baseIngredients = new Set(product.ingredient_names);
 
@@ -186,7 +189,6 @@ async function findAlternatives(product) {
     const nameSim = bigramSimilarity(bigrams(product.normalized_name), cand.bigrams);
     const formMatch = product.dosage_form && cand.dosage_form === product.dosage_form ? 1 : 0;
 
-    // Weighted composite: ingredient match dominates, name and form refine.
     const score = jaccard * 0.7 + nameSim * 0.2 + formMatch * 0.1;
     if (score <= 0.05) continue;
 
@@ -206,7 +208,19 @@ async function findAlternatives(product) {
   }
 
   scored.sort((a, b) => b.similarity_score - a.similarity_score || b.ingredient_match_count - a.ingredient_match_count);
-  return scored.slice(0, 6);
+  return { alternatives: scored.slice(0, 6), ai_powered: false, ai_reason: null, no_alternative: false };
+}
+
+// Primary entry point: tries AI pipeline first, falls back to algorithmic.
+async function findAlternatives(product) {
+  try {
+    const allProducts = await loadProducts();
+    const result = await getAiAlternative(product, allProducts);
+    return result;
+  } catch (err) {
+    console.warn('AI alternative pipeline failed, using algorithmic fallback:', err.message);
+    return _algorithmicAlternatives(product);
+  }
 }
 
 function invalidateCache() {

@@ -182,18 +182,6 @@ CREATE TABLE IF NOT EXISTS mediverify.product_status_history (
 
 CREATE INDEX IF NOT EXISTS idx_product_status_history_product ON mediverify.product_status_history (product_id);
 
-CREATE TABLE IF NOT EXISTS mediverify.product_alternatives (
-  alternative_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  original_product_id uuid NOT NULL REFERENCES mediverify.products(product_id) ON DELETE CASCADE,
-  alternative_product_id uuid NOT NULL REFERENCES mediverify.products(product_id) ON DELETE CASCADE,
-  relationship_type text,
-  ingredient_match integer,
-  similarity_score numeric,
-  ai_generated boolean DEFAULT false,
-  rationale text,
-  UNIQUE (original_product_id, alternative_product_id)
-);
-
 CREATE TABLE IF NOT EXISTS mediverify.admin_events (
   event_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES mediverify.users(user_id) ON DELETE SET NULL,

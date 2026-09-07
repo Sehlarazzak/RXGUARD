@@ -168,7 +168,9 @@ async function req(method, path, body, token) {
   check('unsafe medicine has alternatives', (r.json.product.alternatives || []).length >= 1);
   if ((r.json.product.alternatives || []).length) {
     const alt = r.json.product.alternatives[0];
-    console.log('   top alternative:', alt.brand_name, 'score:', alt.similarity_score, 'shared:', alt.similar_ingredients);
+    const mode = r.json.product.ai_powered ? 'AI-powered' : 'algorithmic';
+    console.log('   top alternative:', alt.brand_name, 'score:', alt.similarity_score, 'shared:', alt.similar_ingredients, '(' + mode + ')');
+    if (r.json.product.ai_reason) console.log('   AI reason:', r.json.product.ai_reason);
   }
 
   // doctor cannot access admin
