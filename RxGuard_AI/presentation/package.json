@@ -1,8 +1,0 @@
-{
-  "name": "rxguard-presentation-tools",
-  "private": true,
-  "description": "Isolated tooling for generating the RxGuard AI hackathon deck.",
-  "dependencies": {
-    "pptxgenjs": "^3.12.0"
-  }
-}
